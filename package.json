@@ -64,8 +64,8 @@
     "karma-webdriver-launcher": "git+https://github.com/nhn/karma-webdriver-launcher.git#v1.2.0",
     "karma-webpack": "^3.0.0",
     "mini-css-extract-plugin": "^0.4.0",
-    "optimize-css-assets-webpack-plugin": "^4.0.2",
-    "preprocess-loader": "^0.2.2",
+    "optimize-css-assets-webpack-plugin": "^5.0.3",
+    "preprocess-loader": "^0.3.0",
     "safe-umd-webpack-plugin": "^4.0.0",
     "style-loader": "^0.21.0",
     "stylus": "^0.54.5",
@@ -95,7 +95,7 @@
   },
   "dependencies": {
     "tui-code-snippet": "^1.5.0",
-    "tui-date-picker": "^3.2.1",
+    "tui-date-picker": "^4.0.2",
     "tui-time-picker": "^1.5.0"
   }
 }
