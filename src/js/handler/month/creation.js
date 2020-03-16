@@ -319,6 +319,18 @@ MonthCreation.prototype._adjustStartAndEndTime = function(start, end) {
 };
 
 /**
+ * Invoke event creation click
+ * @param {Calendar} calendar - calendar instance
+ */
+MonthCreation.prototype.invokeEventCreationClick = function(calendar) {
+    var eventData = {
+        model: calendar
+    };
+
+    this.fire('calendarCreationClick', eventData);
+};
+
+/**
  * Invoke creation click
  * @param {Schedule} schedule - schedule instance
  */

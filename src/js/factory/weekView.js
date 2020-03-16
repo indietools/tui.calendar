@@ -18,6 +18,7 @@ var Week = require('../view/week/week');
 var DayName = require('../view/week/dayname');
 var DayGrid = require('../view/week/dayGrid');
 var TimeGrid = require('../view/week/timeGrid');
+var CalendarCreationPopup = require('../view/popup/calendarCreationPopup');
 var ScheduleCreationPopup = require('../view/popup/scheduleCreationPopup');
 var ScheduleDetailPopup = require('../view/popup/scheduleDetailPopup');
 
@@ -89,7 +90,7 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     var panels = [],
         vpanels = [];
     var weekView, dayNameContainer, dayNameView, vLayoutContainer, vLayout;
-    var createView, onSaveNewSchedule, onSetCalendars, lastVPanel;
+    var createView, createCalendarView, onSaveNewSchedule, onSaveNewCalendar, onSetCalendars, lastVPanel;
     var detailView, onShowDetailPopup, onDeleteSchedule, onShowEditPopup, onEditSchedule;
     var taskView = options.taskView;
     var scheduleView = options.scheduleView;
@@ -233,7 +234,10 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
     // binding create schedules event
     if (options.useCreationPopup) {
-        createView = new ScheduleCreationPopup(layoutContainer, baseController.calendars, options.usageStatistics);
+        createView = new ScheduleCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
+        createCalendarView = new CalendarCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             util.extend(scheduleData, {
@@ -245,12 +249,24 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 weekView.handler.creation.time.fire('beforeCreateSchedule', scheduleData);
             }
         };
+
+        onSaveNewCalendar = function(calendarData) {
+            util.extend(calendarData, {
+                useCreationPopup: true
+            });
+            weekView.handler.creation.allday.fire('beforeCreateCalendar', calendarData);
+        };
+
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
+        createCalendarView.on('beforeCreateCalendar', onSaveNewCalendar);
     }
 
     onSetCalendars = function(calendars) {
         if (createView) {
             createView.setCalendars(calendars);
+        }
+        if (createCalendarView) {
+            createCalendarView.setCalendars(calendars);
         }
     };
 
@@ -321,6 +337,11 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         });
 
         if (options.useCreationPopup) {
+            createCalendarView.off('beforeCreateCalendar', onSaveNewCalendar);
+            createCalendarView.destroy();
+        }
+
+        if (options.useCreationPopup) {
             createView.off('beforeCreateSchedule', onSaveNewSchedule);
             createView.destroy();
         }
@@ -351,6 +372,16 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                     childView.scrollToNow();
                 }
             });
+        },
+        openCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                weekView.handler.creation.allday.invokeCalendarCreationClick(calendar);
+            }
+        },
+        showCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                createCalendarView.render(calendar);
+            }
         },
         openCreationPopup: function(schedule) {
             if (createView) {

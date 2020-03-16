@@ -1,0 +1,25 @@
+<div class="{{CSS_PREFIX}}popup">
+    <div class="{{CSS_PREFIX}}popup-container">
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-color">
+                <label for="{{CSS_PREFIX}}calendar-creation-color-input">Color:</label>
+                <div id="{{CSS_PREFIX}}calendar-creation-color-wrapper" class="{{CSS_PREFIX}}color-wrapper" style="background-color: {{bgColor}};">
+                    <input id="{{CSS_PREFIX}}calendar-creation-color-input" class="{{CSS_PREFIX}}color-input" type="color" value="{{bgColor}}">
+                </div>
+            </div>
+        </div>
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-title">
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-title"></span>
+                <input id="{{CSS_PREFIX}}calendar-title" class="{{CSS_PREFIX}}content" placeholder="Name" value=""></span>
+            </div>
+        </div>
+        <button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}popup-close"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-close"></span></button>
+        <div class="{{CSS_PREFIX}}section-button-save"><button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}confirm {{CSS_PREFIX}}calendar-popup-save"><span>{{#if isEditMode}}{{{popupUpdate-tmpl}}}{{else}}{{{popupSave-tmpl}}}{{/if}}</span></button></div>
+    </div>
+    <div id="{{CSS_PREFIX}}popup-arrow" class="{{CSS_PREFIX}}popup-arrow {{CSS_PREFIX}}arrow-bottom">
+        <div class="{{CSS_PREFIX}}popup-arrow-border">
+            <div class="{{CSS_PREFIX}}popup-arrow-fill"></div>
+        </div>
+    </div>
+</div>

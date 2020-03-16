@@ -275,6 +275,27 @@ Base.prototype._removeFromMatrix = function(schedule) {
 };
 
 /**
+ * Add a calendar instance.
+ * @emits Base#addedCalendar
+ * @param {Calendar} calendar The instance of Calendar.
+ * @param {boolean} silent - set true then don't fire events.
+ * @returns {Calendar} The instance of Calendar that added.
+ */
+Base.prototype.addCalendar = function(calendar, silent) {
+    this.calendars.add(calendar);
+
+    if (!silent) {
+        /**
+         * @event Base#addedCalendar
+         * @type {object}
+         */
+        this.fire('addedCalendar', calendar);
+    }
+
+    return calendar;
+};
+
+/**
  * Add a schedule instance.
  * @emits Base#addedSchedule
  * @param {Schedule} schedule The instance of Schedule.

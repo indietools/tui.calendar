@@ -1,6 +1,6 @@
 /*!
  * TOAST UI Calendar
- * @version 1.12.11 | Tue Mar 10 2020
+ * @version 1.12.11 | Mon Mar 16 2020
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  * @license MIT
  */
@@ -2824,6 +2824,53 @@ module.exports = Collection;
 
 /***/ }),
 
+/***/ "./src/js/common/colorutil.js":
+/*!************************************!*\
+  !*** ./src/js/common/colorutil.js ***!
+  \************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* eslint complexity: 0, no-shadow: 0, max-nested-callbacks: 0  */
+/**
+ * @fileoverview Utility modules managing pretty colors.
+ * @author IndieTools <support@indie.tools>
+ */
+
+
+var colorutil;
+
+var THRESHOLD = 149;
+
+colorutil = {
+    /**
+     * Determine appropriate text color (#FFF or #000) for a given background color.
+     * @param {string} bgColor - hex coded background color to determine font color for.
+     * @returns {string} hex coded font color
+     */
+    determineTextforBackground: function(bgColor) {
+        var r, g, b;
+
+        if (bgColor.length === 7) {
+            r = parseInt(bgColor.substring(1, 3), 16);
+            g = parseInt(bgColor.substring(3, 5), 16);
+            b = parseInt(bgColor.substring(5, 7), 16);
+        } else {
+            r = parseInt(bgColor.substring(0, 2), 16);
+            g = parseInt(bgColor.substring(2, 4), 16);
+            b = parseInt(bgColor.substring(4, 6), 16);
+        }
+
+        return (((r * 0.299) + (g * 0.587) + (b * 0.114)) > THRESHOLD) ? '#000000' : '#ffffff';
+    }
+};
+
+module.exports = colorutil;
+
+
+/***/ }),
+
 /***/ "./src/js/common/common.js":
 /*!*********************************!*\
   !*** ./src/js/common/common.js ***!
@@ -3167,6 +3214,18 @@ module.exports = {
                     changes[propName] = data[propName];
                 }
             } else if (data[propName] && schedule[propName] !== data[propName]) {
+                changes[propName] = data[propName];
+            }
+        });
+
+        return util.isEmpty(changes) ? null : changes;
+    },
+
+    getCalendarChanges: function(calendar, propNames, data) {
+        var changes = {};
+
+        util.forEach(propNames, function(propName) {
+            if (data[propName] && calendar[propName] !== data[propName]) {
                 changes[propName] = data[propName];
             }
         });
@@ -7379,6 +7438,27 @@ Base.prototype._removeFromMatrix = function(schedule) {
 };
 
 /**
+ * Add a calendar instance.
+ * @emits Base#addedCalendar
+ * @param {Calendar} calendar The instance of Calendar.
+ * @param {boolean} silent - set true then don't fire events.
+ * @returns {Calendar} The instance of Calendar that added.
+ */
+Base.prototype.addCalendar = function(calendar, silent) {
+    this.calendars.add(calendar);
+
+    if (!silent) {
+        /**
+         * @event Base#addedCalendar
+         * @type {object}
+         */
+        this.fire('addedCalendar', calendar);
+    }
+
+    return calendar;
+};
+
+/**
  * Add a schedule instance.
  * @emits Base#addedSchedule
  * @param {Schedule} schedule The instance of Schedule.
@@ -9011,6 +9091,13 @@ function Calendar(container, options) {
     this._openCreationPopup = null;
 
     /**
+     * Open calendar creation popup
+     * @type {function}
+     * @private
+     */
+    this._openCalendarCreationPopup = null;
+
+    /**
      * Hide the more view
      * @type {function}
      * @private
@@ -9745,6 +9832,27 @@ Calendar.prototype._onClickDayname = function(clickScheduleData) {
 };
 
 /**
+ * @fires {Calendar#n('beforeCreateCalendar', function}
+ * @param {object} createCalendarData - select schedule data from allday, time
+ * @private
+ */
+Calendar.prototype._onBeforeCalendarCreate = function(createCalendarData) {
+    if (this._options.useCreationPopup && !createCalendarData.useCreationPopup) {
+        if (this._showCalendarCreationPopup) {
+            this._showCalendarCreationPopup(createCalendarData);
+
+            return;
+        }
+    }
+    /**
+     * Fire this event when select time period in daily, weekly, monthly.
+     * @event Calendar#beforeCreateCalendar
+     * @type {object}
+     */
+    this.fire('beforeCreateCalendar', createCalendarData);
+};
+
+/**
  * @fires {Calendar#n('beforeCreateSchedule', function}
  * @param {object} createScheduleData - select schedule data from allday, time
  * @private
@@ -9895,6 +10003,8 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
     });
 
     util.forEach(handler.creation, function(creationHandler) {
+        creationHandler[method]('beforeCreateCalendar', self._onBeforeCalendarCreate, self);
+        creationHandler[method]('beforeDeleteCalendar', self._onBeforeCalenderDelete, self);
         creationHandler[method]('beforeCreateSchedule', self._onBeforeCreate, self);
         creationHandler[method]('beforeDeleteSchedule', self._onBeforeDelete, self);
     });
@@ -10006,7 +10116,9 @@ Calendar.prototype.changeView = function(newViewName, force) {
     this._refreshMethod = created.refresh;
     this._scrollToNowMethod = created.scrollToNow;
     this._openCreationPopup = created.openCreationPopup;
+    this._openCalendarCreationPopup = created.openCalendarCreationPopup;
     this._showCreationPopup = created.showCreationPopup;
+    this._showCalendarCreationPopup = created.showCalendarCreationPopup;
     this._hideMoreView = created.hideMoreView;
 
     this.move();
@@ -10173,6 +10285,16 @@ Calendar.prototype.setCalendars = function(calendars) {
     this._controller.setCalendars(calendars);
 
     this.render();
+};
+
+/**
+ * Open calendar creation popup
+ * @param {Calendar} calendar - The preset {@link Calendar} data
+ */
+Calendar.prototype.openCalendarCreationPopup = function(calendar) {
+    if (this._openCalendarCreationPopup) {
+        this._openCalendarCreationPopup(calendar);
+    }
 };
 
 /**
@@ -10378,6 +10500,7 @@ var config = __webpack_require__(/*! ../config */ "./src/js/config.js"),
     MonthResize = __webpack_require__(/*! ../handler/month/resize */ "./src/js/handler/month/resize.js"),
     MonthMove = __webpack_require__(/*! ../handler/month/move */ "./src/js/handler/month/move.js"),
     More = __webpack_require__(/*! ../view/month/more */ "./src/js/view/month/more.js"),
+    CalendarCreationPopup = __webpack_require__(/*! ../view/popup/calendarCreationPopup */ "./src/js/view/popup/calendarCreationPopup.js"),
     ScheduleCreationPopup = __webpack_require__(/*! ../view/popup/scheduleCreationPopup */ "./src/js/view/popup/scheduleCreationPopup.js"),
     ScheduleDetailPopup = __webpack_require__(/*! ../view/popup/scheduleDetailPopup */ "./src/js/view/popup/scheduleDetailPopup.js"),
     Schedule = __webpack_require__(/*! ../model/schedule */ "./src/js/model/schedule.js");
@@ -10412,7 +10535,7 @@ function getViewModelForMoreLayer(date, target, schedules, daynames) {
  * @returns {object} view instance and refresh method
  */
 function createMonthView(baseController, layoutContainer, dragHandler, options) {
-    var monthViewContainer, monthView, moreView, createView;
+    var monthViewContainer, monthView, moreView, createView, createCalendarView;
     var clickHandler, creationHandler, resizeHandler, moveHandler, clearSchedulesHandler, onUpdateSchedule;
     var onShowCreationPopup, onSaveNewSchedule, onShowEditPopup;
     var detailView, onShowDetailPopup, onDeleteSchedule, onEditSchedule;
@@ -10478,6 +10601,8 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
     // binding popup for schedules creation
     if (options.useCreationPopup) {
         createView = new ScheduleCreationPopup(layoutContainer, baseController.calendars, options.usageStatistics);
+        createCalendarView = new CalendarCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             creationHandler.fire('beforeCreateSchedule', util.extend(scheduleData, {
@@ -10485,6 +10610,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
             }));
         };
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
+        createView.on('beforeCreateCalendar', onSaveNewSchedule);
     }
 
     // binding popup for schedule detail
@@ -10521,6 +10647,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
                 createView.render(eventData);
             };
             createView.on('beforeUpdateSchedule', onEditSchedule);
+            createView.on('beforeUpdateCalendar', onEditSchedule);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
@@ -10573,6 +10700,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
         if (options.useCreationPopup && options.useDetailPopup) {
             createView.off('beforeUpdateSchedule', onUpdateSchedule);
+            createCalendarView.off('beforeUpdateCalendar', onUpdateSchedule);
         }
 
         if (options.useCreationPopup) {
@@ -10598,6 +10726,11 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         view: monthView,
         refresh: function() {
             monthView.vLayout.refresh();
+        },
+        openCalendarCreationPopup: function() {
+            if (createCalendarView && creationHandler) {
+                creationHandler.invokeCalendarCreationClick();
+            }
         },
         openCreationPopup: function(schedule) {
             if (createView && creationHandler) {
@@ -10651,6 +10784,7 @@ var Week = __webpack_require__(/*! ../view/week/week */ "./src/js/view/week/week
 var DayName = __webpack_require__(/*! ../view/week/dayname */ "./src/js/view/week/dayname.js");
 var DayGrid = __webpack_require__(/*! ../view/week/dayGrid */ "./src/js/view/week/dayGrid.js");
 var TimeGrid = __webpack_require__(/*! ../view/week/timeGrid */ "./src/js/view/week/timeGrid.js");
+var CalendarCreationPopup = __webpack_require__(/*! ../view/popup/calendarCreationPopup */ "./src/js/view/popup/calendarCreationPopup.js");
 var ScheduleCreationPopup = __webpack_require__(/*! ../view/popup/scheduleCreationPopup */ "./src/js/view/popup/scheduleCreationPopup.js");
 var ScheduleDetailPopup = __webpack_require__(/*! ../view/popup/scheduleDetailPopup */ "./src/js/view/popup/scheduleDetailPopup.js");
 
@@ -10722,7 +10856,7 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     var panels = [],
         vpanels = [];
     var weekView, dayNameContainer, dayNameView, vLayoutContainer, vLayout;
-    var createView, onSaveNewSchedule, onSetCalendars, lastVPanel;
+    var createView, createCalendarView, onSaveNewSchedule, onSaveNewCalendar, onSetCalendars, lastVPanel;
     var detailView, onShowDetailPopup, onDeleteSchedule, onShowEditPopup, onEditSchedule;
     var taskView = options.taskView;
     var scheduleView = options.scheduleView;
@@ -10866,7 +11000,10 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
     // binding create schedules event
     if (options.useCreationPopup) {
-        createView = new ScheduleCreationPopup(layoutContainer, baseController.calendars, options.usageStatistics);
+        createView = new ScheduleCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
+        createCalendarView = new CalendarCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             util.extend(scheduleData, {
@@ -10878,12 +11015,24 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 weekView.handler.creation.time.fire('beforeCreateSchedule', scheduleData);
             }
         };
+
+        onSaveNewCalendar = function(calendarData) {
+            util.extend(calendarData, {
+                useCreationPopup: true
+            });
+            weekView.handler.creation.allday.fire('beforeCreateCalendar', calendarData);
+        };
+
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
+        createCalendarView.on('beforeCreateCalendar', onSaveNewCalendar);
     }
 
     onSetCalendars = function(calendars) {
         if (createView) {
             createView.setCalendars(calendars);
+        }
+        if (createCalendarView) {
+            createCalendarView.setCalendars(calendars);
         }
     };
 
@@ -10954,6 +11103,11 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         });
 
         if (options.useCreationPopup) {
+            createCalendarView.off('beforeCreateCalendar', onSaveNewCalendar);
+            createCalendarView.destroy();
+        }
+
+        if (options.useCreationPopup) {
             createView.off('beforeCreateSchedule', onSaveNewSchedule);
             createView.destroy();
         }
@@ -10984,6 +11138,16 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                     childView.scrollToNow();
                 }
             });
+        },
+        openCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                weekView.handler.creation.allday.invokeCalendarCreationClick(calendar);
+            }
+        },
+        showCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                createCalendarView.render(calendar);
+            }
         },
         openCreationPopup: function(schedule) {
             if (createView) {
@@ -11456,6 +11620,33 @@ DayGridCreation.prototype.checkExpectedCondition = function(target) {
 };
 
 /**
+ * Request calendar model creation to controller by custom calendar.
+ * @fires {DayGridCreation#beforeCreateCalendar}
+ * @param {object} calendarData - calendar data from DayGridCreation module.
+ */
+DayGridCreation.prototype._createCalendar = function(calendarData) {
+    /**
+     * @event {DayGridCreation#beforeCreateCalendar}
+     * @type {object}
+     * @property {DayGridCreationGuide} guide - DayGridCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var calendarViewModelData = calendarData;
+    calendarViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateCalendar', calendarViewModelData);
+    // {
+    //    id: calendarData.id,
+    //    name: calendarData.name,
+    //    color: calendarData.color,
+    //    bgColor: calendarData.bgColor,
+    //    dragBgColor: calendarData.dragBgColor
+    //    guide: this.guide,
+    //    triggerEventName: scheduleData.triggerEvent
+    // });
+};
+
+/**
  * Request schedule model creation to controller by custom schedules.
  * @fires {DayGridCreation#beforeCreateSchedule}
  * @param {object} scheduleData - schedule data from DayGridCreation module.
@@ -11640,6 +11831,20 @@ DayGridCreation.prototype._onDblClick = function(clickEventData) {
     this._createSchedule(scheduleData);
 
     this._requestOnClick = false;
+};
+
+/**
+ * Invoke creation click
+ * @param {Calendar} calendar - calendar instance
+ */
+DayGridCreation.prototype.invokeCalendarCreationClick = function(calendar) {
+    var calendarData;
+
+    calendarData = calendar;
+
+    // this.fire('click', calendarData);
+
+    this._createCalendar(calendarData);
 };
 
 /**
@@ -13674,6 +13879,18 @@ MonthCreation.prototype._adjustStartAndEndTime = function(start, end) {
         start: start,
         end: end
     };
+};
+
+/**
+ * Invoke event creation click
+ * @param {Calendar} calendar - calendar instance
+ */
+MonthCreation.prototype.invokeEventCreationClick = function(calendar) {
+    var eventData = {
+        model: calendar
+    };
+
+    this.fire('calendarCreationClick', eventData);
 };
 
 /**
@@ -19752,6 +19969,564 @@ module.exports = WeekdayInMonth;
 
 /***/ }),
 
+/***/ "./src/js/view/popup/calendarCreationPopup.js":
+/*!****************************************************!*\
+  !*** ./src/js/view/popup/calendarCreationPopup.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/**
+ * @fileoverview Floating layer for writing new calendars
+ * @author NHN FE Development Lab <dl_javascript@nhn.com>
+ */
+
+
+var View = __webpack_require__(/*! ../../view/view */ "./src/js/view/view.js");
+var FloatingLayer = __webpack_require__(/*! ../../common/floatingLayer */ "./src/js/common/floatingLayer.js");
+var util = __webpack_require__(/*! tui-code-snippet */ "tui-code-snippet");
+var config = __webpack_require__(/*! ../../config */ "./src/js/config.js");
+var domevent = __webpack_require__(/*! ../../common/domevent */ "./src/js/common/domevent.js");
+var domutil = __webpack_require__(/*! ../../common/domutil */ "./src/js/common/domutil.js");
+var colorutil = __webpack_require__(/*! ../../common/colorutil */ "./src/js/common/colorutil.js");
+var common = __webpack_require__(/*! ../../common/common */ "./src/js/common/common.js");
+var tmpl = __webpack_require__(/*! ../template/popup/calendarCreationPopup.hbs */ "./src/js/view/template/popup/calendarCreationPopup.hbs");
+var MAX_WEEK_OF_MONTH = 6;
+var ARROW_WIDTH_HALF = 8;
+
+/**
+ * @constructor
+ * @extends {View}
+ * @param {HTMLElement} container - container element
+ * @param {Array.<Calendar>} calendars - calendar list used to create new calendar
+ * @param {boolean} usageStatistics - GA tracking options in Calendar
+ */
+function CalendarCreationPopup(container, calendars, usageStatistics) {
+    View.call(this, container);
+    /**
+     * @type {FloatingLayer}
+     */
+    this.layer = new FloatingLayer(null, container);
+
+    /**
+     * cached view model
+     * @type {object}
+     */
+    this._viewModel = null;
+    this._selectedCal = null;
+    this._calendar = null;
+    this.calendars = calendars;
+    this._focusedDropdown = null;
+    this._usageStatistics = usageStatistics;
+    this._onClickListeners = [
+        this._closePopup.bind(this),
+        this._onClickSaveCalendar.bind(this)
+    ];
+
+    domevent.on(container, 'click', this._onClick, this);
+}
+
+util.inherit(CalendarCreationPopup, View);
+
+/**
+ * Mousedown event handler for hiding popup layer when user mousedown outside of
+ * layer
+ * @param {MouseEvent} mouseDownEvent - mouse event object
+ */
+CalendarCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
+    var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
+        popupLayer = domutil.closest(target, config.classname('.floating-layer'));
+
+    if (popupLayer) {
+        return;
+    }
+
+    this.hide();
+};
+
+/**
+ * @override
+ */
+CalendarCreationPopup.prototype.destroy = function() {
+    this.layer.destroy();
+    this.layer = null;
+    domevent.off(this.container, 'click', this._onClick, this);
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+    View.prototype.destroy.call(this);
+};
+
+/**
+ * @override
+ * Click event handler for close button
+ * @param {MouseEvent} clickEvent - mouse event object
+ */
+CalendarCreationPopup.prototype._onClick = function(clickEvent) {
+    var target = (clickEvent.target || clickEvent.srcElement);
+
+    util.forEach(this._onClickListeners, function(listener) {
+        return !listener(target);
+    });
+};
+
+/**
+ * Test click event target is close button, and return layer is closed(hidden)
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether popup layer is closed or not
+ */
+CalendarCreationPopup.prototype._closePopup = function(target) {
+    var className = config.classname('popup-close');
+
+    if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
+        this.hide();
+
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * Toggle dropdown menu view, when user clicks dropdown button
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether user clicked dropdown button or not
+ */
+CalendarCreationPopup.prototype._toggleDropdownMenuView = function(target) {
+    var className = config.classname('dropdown-button');
+    var dropdownBtn = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
+
+    if (!dropdownBtn) {
+        return false;
+    }
+
+    if (domutil.hasClass(dropdownBtn.parentNode, config.classname('open'))) {
+        this._closeDropdownMenuView(dropdownBtn.parentNode);
+    } else {
+        this._openDropdownMenuView(dropdownBtn.parentNode);
+    }
+
+    return true;
+};
+
+/**
+ * Close drop down menu
+ * @param {HTMLElement} dropdown - dropdown element that has a opened dropdown menu
+ */
+CalendarCreationPopup.prototype._closeDropdownMenuView = function(dropdown) {
+    dropdown = dropdown || this._focusedDropdown;
+    if (dropdown) {
+        domutil.removeClass(dropdown, config.classname('open'));
+        this._focusedDropdown = null;
+    }
+};
+
+/**
+ * Open drop down menu
+ * @param {HTMLElement} dropdown - dropdown element that has a closed dropdown menu
+ */
+CalendarCreationPopup.prototype._openDropdownMenuView = function(dropdown) {
+    domutil.addClass(dropdown, config.classname('open'));
+    this._focusedDropdown = dropdown;
+};
+
+/**
+ * If click dropdown menu item, close dropdown menu
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether
+ */
+CalendarCreationPopup.prototype._selectDropdownMenuItem = function(target) {
+    var itemClassName = config.classname('dropdown-menu-item');
+    var iconClassName = config.classname('icon');
+    var contentClassName = config.classname('content');
+    var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
+    var bgColor, title, dropdown, dropdownBtn;
+
+    if (!selectedItem) {
+        return false;
+    }
+
+    bgColor = domutil.find('.' + iconClassName, selectedItem).style.backgroundColor || 'transparent';
+    title = domutil.find('.' + contentClassName, selectedItem).innerHTML;
+
+    dropdown = domutil.closest(selectedItem, config.classname('.dropdown'));
+    dropdownBtn = domutil.find(config.classname('.dropdown-button'), dropdown);
+    domutil.find('.' + contentClassName, dropdownBtn).innerText = title;
+
+    if (domutil.hasClass(dropdown, config.classname('section-calendar'))) {
+        domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
+        this._selectedCal = common.find(this.calendars, function(cal) {
+            return cal.id === domutil.getData(selectedItem, 'calendarId');
+        });
+    }
+
+    domutil.removeClass(dropdown, config.classname('open'));
+
+    return true;
+};
+
+/**
+ * Toggle allday checkbox state
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether event target is allday section or not
+ */
+CalendarCreationPopup.prototype._toggleIsAllday = function(target) {
+    var className = config.classname('section-allday');
+    var alldaySection = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
+    var checkbox;
+
+    if (alldaySection) {
+        checkbox = domutil.find(config.classname('.checkbox-square'), alldaySection);
+        checkbox.checked = !checkbox.checked;
+
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * Toggle private button
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether event target is private section or not
+ */
+CalendarCreationPopup.prototype._toggleIsPrivate = function(target) {
+    var className = config.classname('section-private');
+    var privateSection = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
+
+    if (privateSection) {
+        if (domutil.hasClass(privateSection, config.classname('public'))) {
+            domutil.removeClass(privateSection, config.classname('public'));
+        } else {
+            domutil.addClass(privateSection, config.classname('public'));
+        }
+
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * Save new calendar if user clicked save button
+ * @emits CalendarCreationPopup#saveCalendar
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether save button is clicked or not
+ */
+CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
+    var className = config.classname('calendar-popup-save');
+    var cssPrefix = config.cssPrefix;
+    var name, bgColor, changes;
+
+    if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
+        return false;
+    }
+
+    name = domutil.get(cssPrefix + 'calendar-title');
+    bgColor = domutil.get(cssPrefix + 'calendar-creation-color-input');
+
+    if (!name.value) {
+        name.focus();
+
+        return true;
+    }
+
+    if (!bgColor.value) {
+        // TODO: Also check for value repeated in other calendars.
+        bgColor.focus();
+
+        return true;
+    }
+
+    if (this._isEditMode) {
+        changes = common.getCalendarChanges(
+            this._calendar,
+            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'checked'],
+            {
+                name: name.value,
+                bgColor: bgColor.value,
+                color: colorutil.determineTextforBackground(bgColor.value),
+                dragBgColor: bgColor.value,
+                borderColor: bgColor.value,
+                checked: true
+            }
+        );
+
+        this.fire('beforeUpdateCalendar', {
+            calendar: this._calendar,
+            changes: changes
+        });
+    } else {
+        /**
+         * @event CalendarCreationPopup#beforeCreateCalendar
+         * @type {object}
+         * @property {Calendar} calendar - new calendar instance to be added
+         */
+        this.fire('beforeCreateCalendar', {
+            name: name.value,
+            bgColor: bgColor.value,
+            color: colorutil.determineTextforBackground(bgColor.value),
+            dragBgColor: bgColor.value,
+            borderColor: bgColor.value,
+            checked: true
+        });
+    }
+
+    this.hide();
+
+    return true;
+};
+
+/**
+ * @override
+ * @param {object} viewModel - view model from factory/monthView
+ */
+CalendarCreationPopup.prototype.render = function(viewModel) {
+    var calendars = this.calendars;
+    var layer = this.layer;
+    var self = this;
+    var boxElement, guideElements;
+
+    viewModel.zIndex = this.layer.zIndex + 5;
+    viewModel.calendars = calendars;
+    if (calendars.length) {
+        viewModel.selectedCal = this._selectedCal = calendars[0];
+    }
+
+    if (viewModel.trigger === 'btn-new-calendar') {
+        boxElement = document.getElementById('btn-new-calendar');
+        viewModel.bgColor = '#' + (function co(lor) {
+            var c = (lor += [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'][Math.floor(Math.random() * 16)]);
+            return c && (lor.length === 6) ? lor : co(lor);
+        })('');
+    } else {
+        this.guide = viewModel.guide;
+        guideElements = this._getGuideElements(this.guide);
+        boxElement = guideElements.length ? guideElements[0] : null;
+    }
+    layer.setContent(tmpl(viewModel));
+    layer.show();
+
+    if (boxElement) {
+        this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
+    }
+
+    util.debounce(function() {
+        domevent.on(document.body, 'mousedown', self._onMouseDown, self);
+    })();
+};
+
+/**
+ * Make view model for edit mode
+ * @param {object} viewModel - original view model from 'beforeCreateEditPopup'
+ * @returns {object} - edit mode view model
+ */
+CalendarCreationPopup.prototype._makeEditModeData = function(viewModel) {
+    var schedule = viewModel.schedule;
+    var title, isPrivate, location, startDate, endDate, state;
+    var raw = schedule.raw || {};
+    var calendars = this.calendars;
+
+    var id = schedule.id;
+    title = schedule.title;
+    isPrivate = raw['class'] === 'private';
+    location = schedule.location;
+    startDate = schedule.start;
+    endDate = schedule.end;
+    state = schedule.state;
+
+    viewModel.selectedCal = this._selectedCal = common.find(this.calendars, function(cal) {
+        return cal.id === viewModel.schedule.calendarId;
+    });
+
+    this._calendar = schedule;
+
+    return {
+        id: id,
+        selectedCal: this._selectedCal,
+        calendars: calendars,
+        title: title,
+        isPrivate: isPrivate,
+        location: location,
+        state: state,
+        start: startDate,
+        end: endDate,
+        raw: {
+            class: isPrivate ? 'private' : 'public'
+        },
+        zIndex: this.layer.zIndex + 5,
+        isEditMode: this._isEditMode
+    };
+};
+
+/**
+ * Set popup position and arrow direction to apear near guide element
+ * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
+ */
+CalendarCreationPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+    var layer = domutil.find(config.classname('.popup'), this.layer.container);
+    var layerSize = {
+        width: layer.offsetWidth,
+        height: layer.offsetHeight
+    };
+    var windowSize = {
+        right: window.innerWidth,
+        bottom: window.innerHeight
+    };
+    var parentRect = this.layer.parent.getBoundingClientRect();
+    var parentBounds = {
+        left: parentRect.left,
+        top: parentRect.top
+    };
+    var pos;
+
+    pos = this._calcRenderingData(layerSize, windowSize, guideBound);
+    pos.x -= parentBounds.left;
+    pos.y -= (parentBounds.top + 6);
+    this.layer.setPosition(pos.x, pos.y);
+    this._setArrowDirection(pos.arrow);
+};
+
+/**
+ * Get guide elements from creation guide object
+ * It is used to calculate rendering position of popup
+ * It will be disappeared when hiding popup
+ * @param {MonthCreationGuide|TimeCreationGuide|AlldayCreationGuide} guide - creation guide
+ * @returns {Array.<HTMLElement>} creation guide element
+ */
+CalendarCreationPopup.prototype._getGuideElements = function(guide) {
+    var guideElements = [];
+    var i = 0;
+
+    if (guide.guideElement) {
+        guideElements.push(guide.guideElement);
+    } else if (guide.guideElements) {
+        for (; i < MAX_WEEK_OF_MONTH; i += 1) {
+            if (guide.guideElements[i]) {
+                guideElements.push(guide.guideElements[i]);
+            }
+        }
+    }
+
+    return guideElements;
+};
+
+/**
+ * Get guide element's bound data which only includes top, right, bottom, left
+ * @param {Array.<HTMLElement>} guideElements - creation guide elements
+ * @returns {Object} - popup bound data
+ */
+CalendarCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guideElements) {
+    var bound;
+
+    if (!guideElements.length) {
+        return null;
+    }
+
+    bound = guideElements[0].getBoundingClientRect();
+
+    return {
+        top: bound.top,
+        left: bound.left,
+        bottom: bound.bottom,
+        right: bound.right
+    };
+};
+
+/**
+ * Calculate rendering position usering guide elements
+ * @param {{width: {number}, height: {number}}} layerSize - popup layer's width and height
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} parentSize - width and height of the upper layer, that acts as a border of popup
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
+ * @returns {PopupRenderingData} rendering position of popup and popup arrow
+ */
+CalendarCreationPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+    var guideHorizontalCenter = (guideBound.left + guideBound.right) / 2;
+    var x = guideHorizontalCenter - (layerSize.width / 2);
+    var y = guideBound.top - layerSize.height + 3;
+    var arrowDirection = 'arrow-bottom';
+    var arrowLeft;
+
+    if (y < 0) {
+        y = guideBound.bottom + 9;
+        arrowDirection = 'arrow-top';
+    }
+
+    if (x > 0 && (x + layerSize.width > parentSize.right)) {
+        x = parentSize.right - layerSize.width;
+    }
+
+    if (x < 0) {
+        x = 0;
+    }
+
+    if (guideHorizontalCenter - x !== layerSize.width / 2) {
+        arrowLeft = guideHorizontalCenter - x - ARROW_WIDTH_HALF;
+    }
+
+    /**
+     * @typedef {Object} PopupRenderingData
+     * @property {number} x - left position
+     * @property {number} y - top position
+     * @property {string} arrow.direction - direction of popup arrow
+     * @property {number} [arrow.position] - relative position of popup arrow, if it is not set, arrow appears on the middle of popup
+     */
+    return {
+        x: x,
+        y: y,
+        arrow: {
+            direction: arrowDirection,
+            position: arrowLeft
+        }
+    };
+};
+
+/**
+ * Set arrow's direction and position
+ * @param {Object} arrow rendering data for popup arrow
+ */
+CalendarCreationPopup.prototype._setArrowDirection = function(arrow) {
+    var direction = arrow.direction || 'arrow-bottom';
+    var arrowEl = domutil.get(config.classname('popup-arrow'));
+    var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
+
+    if (direction !== config.classname('arrow-bottom')) {
+        domutil.removeClass(arrowEl, config.classname('arrow-bottom'));
+        domutil.addClass(arrowEl, config.classname(direction));
+    }
+
+    if (arrow.position) {
+        borderElement.style.left = arrow.position + 'px';
+    }
+};
+
+/**
+ * Hide layer
+ */
+CalendarCreationPopup.prototype.hide = function() {
+    this.layer.hide();
+
+    if (this.guide) {
+        this.guide.clearGuideElement();
+        this.guide = null;
+    }
+
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+};
+
+/**
+ * refresh layer
+ */
+CalendarCreationPopup.prototype.refresh = function() {
+    if (this._viewModel) {
+        this.layer.setContent(this.tmpl(this._viewModel));
+    }
+};
+
+module.exports = CalendarCreationPopup;
+
+
+/***/ }),
+
 /***/ "./src/js/view/popup/scheduleCreationPopup.js":
 /*!****************************************************!*\
   !*** ./src/js/view/popup/scheduleCreationPopup.js ***!
@@ -20003,7 +20778,7 @@ ScheduleCreationPopup.prototype._toggleIsPrivate = function(target) {
  * @returns {boolean} whether save button is clicked or not
  */
 ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
-    var className = config.classname('popup-save');
+    var className = config.classname('schedule-popup-save');
     var cssPrefix = config.cssPrefix;
     var title, isPrivate, location, isAllDay, startDate, endDate, state;
     var start, end, calendarId;
@@ -22088,6 +22863,111 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 
 /***/ }),
 
+/***/ "./src/js/view/template/popup/calendarCreationPopup.hbs":
+/*!**************************************************************!*\
+  !*** ./src/js/view/template/popup/calendarCreationPopup.hbs ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Handlebars = __webpack_require__(/*! ./node_modules/handlebars/runtime.js */ "./node_modules/handlebars/runtime.js");
+module.exports = (Handlebars['default'] || Handlebars).template({"1":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":18,"column":172},"end":{"line":18,"column":194}}}) : helper))) != null ? stack1 : "");
+},"3":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":18,"column":202},"end":{"line":18,"column":222}}}) : helper))) != null ? stack1 : "");
+},"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "<div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":12},"end":{"line":1,"column":26}}}) : helper)))
+    + "popup\">\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":16},"end":{"line":2,"column":30}}}) : helper)))
+    + "popup-container\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":20},"end":{"line":3,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":24},"end":{"line":4,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":57},"end":{"line":4,"column":71}}}) : helper)))
+    + "section-color\">\n                <label for=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":28},"end":{"line":5,"column":42}}}) : helper)))
+    + "calendar-creation-color-input\">Color:</label>\n                <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":25},"end":{"line":6,"column":39}}}) : helper)))
+    + "calendar-creation-color-wrapper\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":79},"end":{"line":6,"column":93}}}) : helper)))
+    + "color-wrapper\" style=\"background-color: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":6,"column":133},"end":{"line":6,"column":144}}}) : helper)))
+    + ";\">\n                    <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":7,"column":31},"end":{"line":7,"column":45}}}) : helper)))
+    + "calendar-creation-color-input\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":7,"column":83},"end":{"line":7,"column":97}}}) : helper)))
+    + "color-input\" type=\"color\" value=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":7,"column":130},"end":{"line":7,"column":141}}}) : helper)))
+    + "\">\n                </div>\n            </div>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":20},"end":{"line":11,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":24},"end":{"line":12,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":57},"end":{"line":12,"column":71}}}) : helper)))
+    + "section-title\">\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":13,"column":29},"end":{"line":13,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":13,"column":48},"end":{"line":13,"column":62}}}) : helper)))
+    + "ic-title\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":27},"end":{"line":14,"column":41}}}) : helper)))
+    + "calendar-title\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":64},"end":{"line":14,"column":78}}}) : helper)))
+    + "content\" placeholder=\"Name\" value=\"\"></span>\n            </div>\n        </div>\n        <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":23},"end":{"line":17,"column":37}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":44},"end":{"line":17,"column":58}}}) : helper)))
+    + "popup-close\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":84},"end":{"line":17,"column":98}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":103},"end":{"line":17,"column":117}}}) : helper)))
+    + "ic-close\"></span></button>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":20},"end":{"line":18,"column":34}}}) : helper)))
+    + "section-button-save\"><button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":70},"end":{"line":18,"column":84}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":91},"end":{"line":18,"column":105}}}) : helper)))
+    + "confirm "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":113},"end":{"line":18,"column":127}}}) : helper)))
+    + "calendar-popup-save\"><span>"
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(3, data, 0),"data":data,"loc":{"start":{"line":18,"column":154},"end":{"line":18,"column":229}}})) != null ? stack1 : "")
+    + "</span></button></div>\n    </div>\n    <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":13},"end":{"line":20,"column":27}}}) : helper)))
+    + "popup-arrow\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":47},"end":{"line":20,"column":61}}}) : helper)))
+    + "popup-arrow "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":73},"end":{"line":20,"column":87}}}) : helper)))
+    + "arrow-bottom\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":20},"end":{"line":21,"column":34}}}) : helper)))
+    + "popup-arrow-border\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":22,"column":24},"end":{"line":22,"column":38}}}) : helper)))
+    + "popup-arrow-fill\"></div>\n        </div>\n    </div>\n</div>\n";
+},"useData":true});
+
+/***/ }),
+
 /***/ "./src/js/view/template/popup/scheduleCreationPopup.hbs":
 /*!**************************************************************!*\
   !*** ./src/js/view/template/popup/scheduleCreationPopup.hbs ***!
@@ -22171,7 +23051,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":70,"column":163},"end":{"line":70,"column":185}}}) : helper))) != null ? stack1 : "");
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":70,"column":172},"end":{"line":70,"column":194}}}) : helper))) != null ? stack1 : "");
 },"15":function(container,depth0,helpers,partials,data) {
     var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
@@ -22180,7 +23060,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":70,"column":193},"end":{"line":70,"column":213}}}) : helper))) != null ? stack1 : "");
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":70,"column":202},"end":{"line":70,"column":222}}}) : helper))) != null ? stack1 : "");
 },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
@@ -22405,8 +23285,8 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":70,"column":91},"end":{"line":70,"column":105}}}) : helper)))
     + "confirm "
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":70,"column":113},"end":{"line":70,"column":127}}}) : helper)))
-    + "popup-save\"><span>"
-    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(13, data, 0),"inverse":container.program(15, data, 0),"data":data,"loc":{"start":{"line":70,"column":145},"end":{"line":70,"column":220}}})) != null ? stack1 : "")
+    + "schedule-popup-save\"><span>"
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(13, data, 0),"inverse":container.program(15, data, 0),"data":data,"loc":{"start":{"line":70,"column":154},"end":{"line":70,"column":229}}})) != null ? stack1 : "")
     + "</span></button></div>\n    </div>\n    <div id=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":72,"column":13},"end":{"line":72,"column":27}}}) : helper)))
     + "popup-arrow\" class=\""

@@ -16,6 +16,7 @@ var config = require('../config'),
     MonthResize = require('../handler/month/resize'),
     MonthMove = require('../handler/month/move'),
     More = require('../view/month/more'),
+    CalendarCreationPopup = require('../view/popup/calendarCreationPopup'),
     ScheduleCreationPopup = require('../view/popup/scheduleCreationPopup'),
     ScheduleDetailPopup = require('../view/popup/scheduleDetailPopup'),
     Schedule = require('../model/schedule');
@@ -50,7 +51,7 @@ function getViewModelForMoreLayer(date, target, schedules, daynames) {
  * @returns {object} view instance and refresh method
  */
 function createMonthView(baseController, layoutContainer, dragHandler, options) {
-    var monthViewContainer, monthView, moreView, createView;
+    var monthViewContainer, monthView, moreView, createView, createCalendarView;
     var clickHandler, creationHandler, resizeHandler, moveHandler, clearSchedulesHandler, onUpdateSchedule;
     var onShowCreationPopup, onSaveNewSchedule, onShowEditPopup;
     var detailView, onShowDetailPopup, onDeleteSchedule, onEditSchedule;
@@ -116,6 +117,8 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
     // binding popup for schedules creation
     if (options.useCreationPopup) {
         createView = new ScheduleCreationPopup(layoutContainer, baseController.calendars, options.usageStatistics);
+        createCalendarView = new CalendarCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             creationHandler.fire('beforeCreateSchedule', util.extend(scheduleData, {
@@ -123,6 +126,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
             }));
         };
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
+        createView.on('beforeCreateCalendar', onSaveNewSchedule);
     }
 
     // binding popup for schedule detail
@@ -159,6 +163,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
                 createView.render(eventData);
             };
             createView.on('beforeUpdateSchedule', onEditSchedule);
+            createView.on('beforeUpdateCalendar', onEditSchedule);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
@@ -211,6 +216,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
         if (options.useCreationPopup && options.useDetailPopup) {
             createView.off('beforeUpdateSchedule', onUpdateSchedule);
+            createCalendarView.off('beforeUpdateCalendar', onUpdateSchedule);
         }
 
         if (options.useCreationPopup) {
@@ -236,6 +242,11 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         view: monthView,
         refresh: function() {
             monthView.vLayout.refresh();
+        },
+        openCalendarCreationPopup: function() {
+            if (createCalendarView && creationHandler) {
+                creationHandler.invokeCalendarCreationClick();
+            }
         },
         openCreationPopup: function(schedule) {
             if (createView && creationHandler) {

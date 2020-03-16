@@ -131,6 +131,33 @@ DayGridCreation.prototype.checkExpectedCondition = function(target) {
 };
 
 /**
+ * Request calendar model creation to controller by custom calendar.
+ * @fires {DayGridCreation#beforeCreateCalendar}
+ * @param {object} calendarData - calendar data from DayGridCreation module.
+ */
+DayGridCreation.prototype._createCalendar = function(calendarData) {
+    /**
+     * @event {DayGridCreation#beforeCreateCalendar}
+     * @type {object}
+     * @property {DayGridCreationGuide} guide - DayGridCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var calendarViewModelData = calendarData;
+    calendarViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateCalendar', calendarViewModelData);
+    // {
+    //    id: calendarData.id,
+    //    name: calendarData.name,
+    //    color: calendarData.color,
+    //    bgColor: calendarData.bgColor,
+    //    dragBgColor: calendarData.dragBgColor
+    //    guide: this.guide,
+    //    triggerEventName: scheduleData.triggerEvent
+    // });
+};
+
+/**
  * Request schedule model creation to controller by custom schedules.
  * @fires {DayGridCreation#beforeCreateSchedule}
  * @param {object} scheduleData - schedule data from DayGridCreation module.
@@ -315,6 +342,20 @@ DayGridCreation.prototype._onDblClick = function(clickEventData) {
     this._createSchedule(scheduleData);
 
     this._requestOnClick = false;
+};
+
+/**
+ * Invoke creation click
+ * @param {Calendar} calendar - calendar instance
+ */
+DayGridCreation.prototype.invokeCalendarCreationClick = function(calendar) {
+    var calendarData;
+
+    calendarData = calendar;
+
+    // this.fire('click', calendarData);
+
+    this._createCalendar(calendarData);
 };
 
 /**

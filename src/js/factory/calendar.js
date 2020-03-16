@@ -606,6 +606,13 @@ function Calendar(container, options) {
     this._openCreationPopup = null;
 
     /**
+     * Open calendar creation popup
+     * @type {function}
+     * @private
+     */
+    this._openCalendarCreationPopup = null;
+
+    /**
      * Hide the more view
      * @type {function}
      * @private
@@ -1340,6 +1347,27 @@ Calendar.prototype._onClickDayname = function(clickScheduleData) {
 };
 
 /**
+ * @fires {Calendar#n('beforeCreateCalendar', function}
+ * @param {object} createCalendarData - select schedule data from allday, time
+ * @private
+ */
+Calendar.prototype._onBeforeCalendarCreate = function(createCalendarData) {
+    if (this._options.useCreationPopup && !createCalendarData.useCreationPopup) {
+        if (this._showCalendarCreationPopup) {
+            this._showCalendarCreationPopup(createCalendarData);
+
+            return;
+        }
+    }
+    /**
+     * Fire this event when select time period in daily, weekly, monthly.
+     * @event Calendar#beforeCreateCalendar
+     * @type {object}
+     */
+    this.fire('beforeCreateCalendar', createCalendarData);
+};
+
+/**
  * @fires {Calendar#n('beforeCreateSchedule', function}
  * @param {object} createScheduleData - select schedule data from allday, time
  * @private
@@ -1490,6 +1518,8 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
     });
 
     util.forEach(handler.creation, function(creationHandler) {
+        creationHandler[method]('beforeCreateCalendar', self._onBeforeCalendarCreate, self);
+        creationHandler[method]('beforeDeleteCalendar', self._onBeforeCalenderDelete, self);
         creationHandler[method]('beforeCreateSchedule', self._onBeforeCreate, self);
         creationHandler[method]('beforeDeleteSchedule', self._onBeforeDelete, self);
     });
@@ -1601,7 +1631,9 @@ Calendar.prototype.changeView = function(newViewName, force) {
     this._refreshMethod = created.refresh;
     this._scrollToNowMethod = created.scrollToNow;
     this._openCreationPopup = created.openCreationPopup;
+    this._openCalendarCreationPopup = created.openCalendarCreationPopup;
     this._showCreationPopup = created.showCreationPopup;
+    this._showCalendarCreationPopup = created.showCalendarCreationPopup;
     this._hideMoreView = created.hideMoreView;
 
     this.move();
@@ -1768,6 +1800,16 @@ Calendar.prototype.setCalendars = function(calendars) {
     this._controller.setCalendars(calendars);
 
     this.render();
+};
+
+/**
+ * Open calendar creation popup
+ * @param {Calendar} calendar - The preset {@link Calendar} data
+ */
+Calendar.prototype.openCalendarCreationPopup = function(calendar) {
+    if (this._openCalendarCreationPopup) {
+        this._openCalendarCreationPopup(calendar);
+    }
 };
 
 /**

@@ -338,5 +338,17 @@ module.exports = {
         });
 
         return util.isEmpty(changes) ? null : changes;
+    },
+
+    getCalendarChanges: function(calendar, propNames, data) {
+        var changes = {};
+
+        util.forEach(propNames, function(propName) {
+            if (data[propName] && calendar[propName] !== data[propName]) {
+                changes[propName] = data[propName];
+            }
+        });
+
+        return util.isEmpty(changes) ? null : changes;
     }
 };
