@@ -63,7 +63,13 @@ function Base(options) {
      * Calendar list
      * @type {Array.<Calendar>}
      */
-    this.calendars = [];
+    this.calendars = common.createCalendarCollection();
+
+    /**
+     * Resource list
+     * @type {Array.<Resource>}
+     */
+    this.resources = common.createResourceCollection();
 }
 
 /**
@@ -143,6 +149,82 @@ Base.prototype.createSchedules = function(dataList, silent) {
 };
 
 /**
+ * Update a calendar.
+ * @emits Base#updateCalendar
+ * @param {Calendar} calendar - calendar instance to update
+ * @param {object} options updated object data.
+ * @returns {Calendar} updated calendar instance
+ */
+Base.prototype.updateCalendar = function(calendar, options) {
+    options = options || {};
+
+    if (!util.isUndefined(options.name)) {
+        calendar.name = options.name;
+    }
+
+    if (!util.isUndefined(options.bgColor)) {
+        calendar.bgColor = options.bgColor;
+    }
+
+    if (options.color) {
+        calendar.color = options.color;
+    }
+
+    if (options.dragBgColor) {
+        calendar.dragBgColor = options.dragBgColor;
+    }
+
+    if (options.borderColor) {
+        calendar.borderColor = options.borderColor;
+    }
+
+    if (options.resources) {
+        calendar.resources = options.resources;
+    }
+
+    if (options.checked) {
+        calendar.checked = options.checked;
+    }
+
+    /**
+     * @event Base#updateCalendar
+     */
+    this.fire('updateCalendar');
+
+    return calendar;
+};
+
+/**
+ * Update a resource.
+ * @emits Base#updateResource
+ * @param {Resource} resource - resource instance to update
+ * @param {object} options updated object data.
+ * @returns {Resource} updated resource instance
+ */
+Base.prototype.updateResource = function(resource, options) {
+    options = options || {};
+
+    if (!util.isUndefined(options.name)) {
+        resource.name = options.name;
+    }
+
+    if (!util.isUndefined(options.calendars) && options.calendars instanceof Array) {
+        resource.calendars = options.calendars || [];
+    }
+
+    if (options.checked) {
+        resource.checked = options.checked;
+    }
+
+    /**
+     * @event Base#updateResource
+     */
+    this.fire('updateResource');
+
+    return resource;
+};
+
+/**
  * Update a schedule.
  * @emits Base#updateSchedule
  * @param {Schedule} schedule - schedule instance to update
@@ -211,6 +293,10 @@ Base.prototype.updateSchedule = function(schedule, options) {
         schedule.set('location', options.location);
     }
 
+    if (options.attendees) {
+        schedule.set('attendees', options.attendees);
+    }
+
     if (options.state) {
         schedule.set('state', options.state);
     }
@@ -228,6 +314,32 @@ Base.prototype.updateSchedule = function(schedule, options) {
     this.fire('updateSchedule');
 
     return schedule;
+};
+
+/**
+ * Delete resource instance from controller.
+ * @param {Resource} resource - resource instance to delete
+ * @returns {Resource} deleted model instance.
+ */
+Base.prototype.deleteResource = function(resource) {
+    this.resources = this.resources.filter(function(res) {
+        return res.id !== resource.id;
+    });
+
+    return resource;
+};
+
+/**
+ * Delete calendar instance from controller.
+ * @param {Calendar} calendar - calendar instance to delete
+ * @returns {Calendar} deleted model instance.
+ */
+Base.prototype.deleteCalendar = function(calendar) {
+    this.calendars = this.calendars.filter(function(cal) {
+        return cal.id !== calendar.id;
+    });
+
+    return calendar;
 };
 
 /**
@@ -272,6 +384,27 @@ Base.prototype._removeFromMatrix = function(schedule) {
             matrix.splice(index, 1);
         }
     }, this);
+};
+
+/**
+ * Add a resource instance.
+ * @emits Base#addedResource
+ * @param {Resource} resource The instance of Resource.
+ * @param {boolean} silent - set true then don't fire events.
+ * @returns {Resource} The instance of Resource that added.
+ */
+Base.prototype.addResource = function(resource, silent) {
+    this.resources.add(resource);
+
+    if (!silent) {
+        /**
+         * @event Base#addedResource
+         * @type {object}
+         */
+        this.fire('addedResource', resource);
+    }
+
+    return resource;
 };
 
 /**
@@ -407,6 +540,14 @@ Base.prototype.clearSchedules = function() {
  */
 Base.prototype.setTheme = function(theme) {
     return this.theme.setStyles(theme);
+};
+
+/**
+ * Set resource list
+ * @param {Array.<Resource>} resources - resource list
+ */
+Base.prototype.setResources = function(resources) {
+    this.resources = resources;
 };
 
 /**

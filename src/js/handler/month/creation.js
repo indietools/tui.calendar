@@ -266,7 +266,7 @@ MonthCreation.prototype._onDblClick = function(e) {
  */
 MonthCreation.prototype._onClick = function(e) {
     var self = this;
-    var eventData, range;
+    var eventData;
 
     if (!isElementWeekdayGrid(e.target) || this._disableClick) {
         return;
@@ -277,16 +277,17 @@ MonthCreation.prototype._onClick = function(e) {
     this._requestOnClick = true;
     setTimeout(function() {
         if (self._requestOnClick) {
-            self.fire('monthCreationClick', eventData);
+            self.fire('monthCreationDayClick', eventData);
+            // self.fire('monthCreationClick', eventData);
 
-            range = self._adjustStartAndEndTime(new TZDate(eventData.date), new TZDate(eventData.date));
+            // range = self._adjustStartAndEndTime(new TZDate(eventData.date), new TZDate(eventData.date));
 
-            self._createSchedule({
-                start: range.start,
-                end: range.end,
-                isAllDay: false,
-                triggerEvent: eventData.triggerEvent
-            });
+            // self._createSchedule({
+            //     start: range.start,
+            //     end: range.end,
+            //     isAllDay: false,
+            //     triggerEvent: eventData.triggerEvent
+            // });
         }
         self._requestOnClick = false;
     }, CLICK_DELAY);

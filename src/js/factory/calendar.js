@@ -554,6 +554,7 @@ function Calendar(container, options) {
      */
     this._controller = _createController(options);
     this._controller.setCalendars(options.calendars);
+    this._controller.setResources(options.resources);
 
     /**
      * layout view (layout manager)
@@ -611,6 +612,13 @@ function Calendar(container, options) {
      * @private
      */
     this._openCalendarCreationPopup = null;
+
+    /**
+     * Open resource creation popup
+     * @type {function}
+     * @private
+     */
+    this._openResourceCreationPopup = null;
 
     /**
      * Hide the more view
@@ -830,6 +838,62 @@ Calendar.prototype.updateSchedule = function(scheduleId, calendarId, changes, si
     }
 };
 
+/**
+ * Update the calendar
+ * @param {string} calendarId - ID of the original calendar to update
+ * @param {object} changes - The {@link Calendar} properties and values with changes to update
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ * @example
+ * calendar.updateCalendar(calendar.id, {
+ *     title: 'Changed calendar',
+ * });
+ */
+Calendar.prototype.updateCalendar = function(calendarId, changes, silent) {
+    var ctrl = this._controller,
+        ownCalendars = ctrl.calendars,
+        calendar = ownCalendars.filter(function(model) {
+            return model.id === calendarId;
+        })[0];
+
+    if (!changes || !calendar) {
+        return;
+    }
+
+    ctrl.updateCalendar(calendar, changes);
+
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
+ * Update the resource
+ * @param {string} resourceId - ID of the original resource to update
+ * @param {object} changes - The {@link Resource} properties and values with changes to update
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ * @example
+ * calendar.updateResource(resource.id, {
+ *     title: 'Changed resource',
+ * });
+ */
+Calendar.prototype.updateResource = function(resourceId, changes, silent) {
+    var ctrl = this._controller,
+        ownResources = ctrl.resources,
+        resource = ownResources.filter(function(model) {
+            return model.id === resourceId;
+        })[0];
+
+    if (!changes || !resource) {
+        return;
+    }
+
+    ctrl.updateResource(resource, changes);
+
+    if (!silent) {
+        this.render();
+    }
+};
+
 Calendar.prototype._hasChangedCalendar = function(schedule, changes) {
     return schedule &&
         changes.calendarId &&
@@ -868,6 +932,50 @@ Calendar.prototype.deleteSchedule = function(scheduleId, calendarId, silent) {
     }
 
     ctrl.deleteSchedule(schedule);
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
+ * Delete a calendar.
+ * @param {string} calendarId - ID of calendar to delete
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ */
+Calendar.prototype.deleteCalendar = function(calendarId, silent) {
+    var ctrl = this._controller,
+        ownCalendars = ctrl.calendars,
+        calendar = ownCalendars.find(function(model) {
+            return model.id === calendarId;
+        });
+
+    if (!calendar) {
+        return;
+    }
+
+    ctrl.deleteCalendar(calendar);
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
+ * Delete a resource.
+ * @param {string} resourceId - ID of resource to delete
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ */
+Calendar.prototype.deleteResource = function(resourceId, silent) {
+    var ctrl = this._controller,
+        ownResources = ctrl.resources,
+        resource = ownResources.find(function(model) {
+            return model.id === resourceId;
+        });
+
+    if (!resource) {
+        return;
+    }
+
+    ctrl.deleteResource(resource);
     if (!silent) {
         this.render();
     }
@@ -1304,6 +1412,72 @@ Calendar.prototype._onClick = function(clickScheduleData) {
 
 /**
  * A bridge-based event handler for connecting a click handler to a user click event handler for each view
+ * @fires Calendar#clickCalendar
+ * @param {object} clickCalendarData - The event data of 'clickCalendar' handler
+ * @private
+ */
+Calendar.prototype._onCalendarClick = function(clickCalendarData) {
+    /**
+     * Fire this event when click a calendar.
+     * @event Calendar#clickCalendar
+     * @type {object}
+     * @property {Calendar} calendar - The {@link Calendar} instance
+     * @property {MouseEvent} event - MouseEvent
+     * @example
+     * calendar.on('clickCalendar', function(event) {
+     *     var calendar = event.calendar;
+     *
+     *     if (lastClickCalendar) {
+     *         calendar.updateCalendar(lastClickCalendar.id, lastClickCalendar.calendarId, {
+     *             isFocused: false
+     *         });
+     *     }
+     *     calendar.updateCalendar(calendar.id, calendar.calendarId, {
+     *         isFocused: true
+     *     });
+     *
+     *     lastClickCalendar = calendar;
+     *     // open detail view
+     * });
+     */
+    this.fire('clickCalendar', clickCalendarData);
+};
+
+/**
+ * A bridge-based event handler for connecting a click handler to a user click event handler for each view
+ * @fires Calendar#clickResource
+ * @param {object} clickResourceData - The event data of 'clickResource' handler
+ * @private
+ */
+Calendar.prototype._onResourceClick = function(clickResourceData) {
+    /**
+     * Fire this event when click a resource.
+     * @event Calendar#clickResource
+     * @type {object}
+     * @property {Resource} resource - The {@link Resource} instance
+     * @property {MouseEvent} event - MouseEvent
+     * @example
+     * calendar.on('clickResource', function(event) {
+     *     var resource = event.resource;
+     *
+     *     if (lastClickResource) {
+     *         calendar.updateResource(lastClickResource.id, lastClickResource.calendarId, {
+     *             isFocused: false
+     *         });
+     *     }
+     *     calendar.updateResource(resource.id, resource.calendarId, {
+     *         isFocused: true
+     *     });
+     *
+     *     lastClickResource = resource;
+     *     // open detail view
+     * });
+     */
+    this.fire('clickResource', clickResourceData);
+};
+
+/**
+ * A bridge-based event handler for connecting a click handler to a user click event handler for each view
  * @fires Calendar#clickMore
  * @param {object} clickMoreSchedule - The event data of 'clickMore' handler
  * @private
@@ -1347,6 +1521,50 @@ Calendar.prototype._onClickDayname = function(clickScheduleData) {
 };
 
 /**
+ * @fires {Resource#n('beforeCreateResource', function}
+ * @param {object} createResourceData - select schedule data from allday, time
+ * @private
+ */
+Calendar.prototype._onBeforeResourceCreate = function(createResourceData) {
+    if (this._options.useCreationPopup && !createResourceData.useCreationPopup) {
+        if (this._showResourceCreationPopup) {
+            this._showResourceCreationPopup(createResourceData);
+
+            return;
+        }
+    }
+    /**
+     * Fire this event when select time period in daily, weekly, monthly.
+     * @event Resource#beforeCreateResource
+     * @type {object}
+     */
+    this.fire('beforeCreateResource', createResourceData);
+};
+
+/**
+ * @fires Calendar#beforeUpdateResource
+ * @param {object} updateResourceData - update {@link Resource} data
+ * @private
+ */
+Calendar.prototype._onBeforeResourceUpdate = function(updateResourceData) {
+    /**
+     * Fire this event when we click on a resource to change it.
+     * @event Resource#beforeUpdateResource
+     * @type {object}
+     * @property {Resource} resource - The original {@link Resource} instance
+     * @property {object} changes - The {@link Resource} properties and values with changes to update
+     * @example
+     * calendar.on('beforeUpdateResource', function(event) {
+     *     var resource = event.resource;
+     *     var changes = event.changes;
+     *
+     *     resource.updateResource(resource.id, changes);
+     * });
+     */
+    this.fire('beforeUpdateResource', updateResourceData);
+};
+
+/**
  * @fires {Calendar#n('beforeCreateCalendar', function}
  * @param {object} createCalendarData - select schedule data from allday, time
  * @private
@@ -1365,6 +1583,51 @@ Calendar.prototype._onBeforeCalendarCreate = function(createCalendarData) {
      * @type {object}
      */
     this.fire('beforeCreateCalendar', createCalendarData);
+};
+
+/**
+ * @fires Calendar#beforeUpdateCalendar
+ * @param {object} updateCalendarData - update {@link Calendar} data
+ * @private
+ */
+Calendar.prototype._onBeforeCalendarUpdate = function(updateCalendarData) {
+    /**
+     * Fire this event when we click on a calendar to change it.
+     * @event Calendar#beforeUpdateCalendar
+     * @type {object}
+     * @property {Calendar} calendar - The original {@link Calendar} instance
+     * @property {object} changes - The {@link Calendar} properties and values with changes to update
+     * @example
+     * calendar.on('beforeUpdateCalendar', function(event) {
+     *     var calendar = event.calendar;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateCalendar(calendar.id, changes);
+     * });
+     */
+    this.fire('beforeUpdateCalendar', updateCalendarData);
+};
+
+/**
+ * @fires Calendar#afterDisplayCalendarEditWindow
+ * @param {object} updateCalendarData - update {@link Calendar} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayCalendarEditWindow = function(updateCalendarData) {
+    /**
+     * Fire this event when we render our calendar creation popup.
+     * @event Calendar#afterDisplayCalendarEditWindow
+     * @type {object}
+     * @property {Calendar} calendar - The original {@link Calendar} instance
+     * @example
+     * calendar.on('afterDisplayCalendarEditWindow', function(event) {
+     *     var calendar = event.calendar;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateCalendar(calendar.id, changes);
+     * });
+     */
+    this.fire('afterDisplayCalendarEditWindow', updateCalendarData);
 };
 
 /**
@@ -1412,6 +1675,13 @@ Calendar.prototype._onBeforeCreate = function(createScheduleData) {
     this.fire('beforeCreateSchedule', createScheduleData);
 };
 
+Calendar.prototype._onClickMonthDay = function(eventData) {
+    this.changeView('day');
+    this.setDate(eventData.date);
+
+    this.fire('monthCreationDayClick', eventData);
+};
+
 /**
  * @fires Calendar#beforeUpdateSchedule
  * @param {object} updateScheduleData - update {@link Schedule} data
@@ -1435,6 +1705,91 @@ Calendar.prototype._onBeforeUpdate = function(updateScheduleData) {
      * });
      */
     this.fire('beforeUpdateSchedule', updateScheduleData);
+};
+
+/**
+ * @fires Schedule#afterDisplayScheduleEditWindow
+ * @param {object} updateScheduleData - update {@link Schedule} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayScheduleEditWindow = function(updateScheduleData) {
+    /**
+     * Fire this event when we render our schedule creation popup.
+     * @event Schedule#afterDisplayScheduleEditWindow
+     * @type {object}
+     * @property {Schedule} schedule - The original {@link Schedule} instance
+     * @example
+     * calendar.on('afterDisplayScheduleEditWindow', function(event) {
+     *     var schedule = event.schedule;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateSchedule(schedule.id, changes);
+     * });
+     */
+    this.fire('afterDisplayScheduleEditWindow', updateScheduleData);
+};
+
+/**
+ * @fires Schedule#afterUpdateScheduleCalendar
+ * @param {object} updateScheduleCalendarData - update {@link Schedule} data
+ * @private
+ */
+Calendar.prototype._onAfterUpdateScheduleCalendar = function(updateScheduleCalendarData) {
+    /**
+     * Fire this event when we choose a diferent calendar in the Schedule Creation DDL
+     * @event Schedule#afterUpdateScheduleCalendar
+     * @type {object}
+     * @property {Calendar} prevCalendar - The old {@link Calendar} instance
+     * @property {Calendar} newCalendar - The new {@link Calendar} instance
+     * @example
+     * calendar.on('afterUpdateScheduleCalendar', function(event) {
+     *     var schedule = event.schedule;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateSchedule(schedule.id, changes);
+     * });
+     */
+    this.fire('afterUpdateScheduleCalendar', updateScheduleCalendarData);
+};
+
+/**
+ * @fires Calendar#beforeDeleteResource
+ * @param {object} deleteResourceData - delete resource data
+ * @private
+ */
+Calendar.prototype._onBeforeResourceDelete = function(deleteResourceData) {
+    /**
+     * Fire this event when delete a resource.
+     * @event Calendar#beforeDeleteResource
+     * @type {object}
+     * @property {Resource} resource - The {@link Resource} instance to delete
+     * @example
+     * calendar.on('beforeDeleteResource', function(event) {
+     *     var resource = event.resource;
+     *     alert('The resource is removed.', resource);
+     * });
+     */
+    this.fire('beforeDeleteResource', deleteResourceData);
+};
+
+/**
+ * @fires Calendar#beforeDeleteCalendar
+ * @param {object} deleteCalendarData - delete calendar data
+ * @private
+ */
+Calendar.prototype._onBeforeCalendarDelete = function(deleteCalendarData) {
+    /**
+     * Fire this event when delete a calendar.
+     * @event Calendar#beforeDeleteCalendar
+     * @type {object}
+     * @property {Calendar} calendar - The {@link Calendar} instance to delete
+     * @example
+     * calendar.on('beforeDeleteCalendar', function(event) {
+     *     var calendar = event.calendar;
+     *     alert('The calendar is removed.', calendar);
+     * });
+     */
+    this.fire('beforeDeleteCalendar', deleteCalendarData);
 };
 
 /**
@@ -1511,6 +1866,8 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
 
     util.forEach(handler.click, function(clickHandler) {
         clickHandler[method]('clickSchedule', self._onClick, self);
+        clickHandler[method]('clickCalendar', self._onCalendarClick, self);
+        clickHandler[method]('clickResource', self._onResourceClick, self);
     });
 
     util.forEach(handler.dayname, function(clickHandler) {
@@ -1518,10 +1875,18 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
     });
 
     util.forEach(handler.creation, function(creationHandler) {
+        creationHandler[method]('beforeCreateResource', self._onBeforeResourceCreate, self);
+        creationHandler[method]('beforeUpdateResource', self._onBeforeResourceUpdate, self);
+        creationHandler[method]('beforeDeleteResource', self._onBeforeResourceDelete, self);
         creationHandler[method]('beforeCreateCalendar', self._onBeforeCalendarCreate, self);
-        creationHandler[method]('beforeDeleteCalendar', self._onBeforeCalenderDelete, self);
+        creationHandler[method]('beforeUpdateCalendar', self._onBeforeCalendarUpdate, self);
+        creationHandler[method]('afterDisplayCalendarEditWindow', self._onAfterDisplayCalendarEditWindow, self);
+        creationHandler[method]('beforeDeleteCalendar', self._onBeforeCalendarDelete, self);
         creationHandler[method]('beforeCreateSchedule', self._onBeforeCreate, self);
+        creationHandler[method]('monthCreationDayClick', self._onClickMonthDay, self);
         creationHandler[method]('beforeDeleteSchedule', self._onBeforeDelete, self);
+        creationHandler[method]('afterDisplayScheduleEditWindow', self._onAfterDisplayScheduleEditWindow, self);
+        creationHandler[method]('afterUpdateScheduleCalendar', self._onAfterUpdateScheduleCalendar, self);
     });
 
     util.forEach(handler.move, function(moveHandler) {
@@ -1632,8 +1997,12 @@ Calendar.prototype.changeView = function(newViewName, force) {
     this._scrollToNowMethod = created.scrollToNow;
     this._openCreationPopup = created.openCreationPopup;
     this._openCalendarCreationPopup = created.openCalendarCreationPopup;
+    this._showCalendarDetailPopup = created.showCalendarDetailPopup;
+    this._openResourceCreationPopup = created.openResourceCreationPopup;
+    this._showResourceDetailPopup = created.showResourceDetailPopup;
     this._showCreationPopup = created.showCreationPopup;
     this._showCalendarCreationPopup = created.showCalendarCreationPopup;
+    this._showResourceCreationPopup = created.showResourceCreationPopup;
     this._hideMoreView = created.hideMoreView;
 
     this.move();
@@ -1803,12 +2172,50 @@ Calendar.prototype.setCalendars = function(calendars) {
 };
 
 /**
+ * Set resource list
+ * @param {Array.<ResourceProps>} resources - {@link ResourceProps} List
+ */
+Calendar.prototype.setResources = function(resources) {
+    this._controller.setResources(resources);
+};
+
+/**
+ * Open resource creation popup
+ * @param {Resource} resource - The preset {@link Resource} data
+ */
+Calendar.prototype.openResourceCreationPopup = function(resource) {
+    if (this._openResourceCreationPopup) {
+        this._openResourceCreationPopup(resource);
+    }
+};
+
+/**
+ * show resource creation popup
+ * @param {event} eventData - The event data with resourceId chosen in eventData.resourceId
+ */
+Calendar.prototype.showResourceDetailPopup = function(eventData) {
+    if (this._showResourceDetailPopup) {
+        this._showResourceDetailPopup(eventData);
+    }
+};
+
+/**
  * Open calendar creation popup
  * @param {Calendar} calendar - The preset {@link Calendar} data
  */
 Calendar.prototype.openCalendarCreationPopup = function(calendar) {
     if (this._openCalendarCreationPopup) {
         this._openCalendarCreationPopup(calendar);
+    }
+};
+
+/**
+ * show calendar creation popup
+ * @param {event} eventData - The event data with calendarId chosen in eventData.calendarId
+ */
+Calendar.prototype.showCalendarDetailPopup = function(eventData) {
+    if (this._showCalendarDetailPopup) {
+        this._showCalendarDetailPopup(eventData);
     }
 };
 

@@ -125,6 +125,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
                 useCreationPopup: true
             }));
         };
+
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
         createView.on('beforeCreateCalendar', onSaveNewSchedule);
     }

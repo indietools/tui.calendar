@@ -18,9 +18,12 @@ var Week = require('../view/week/week');
 var DayName = require('../view/week/dayname');
 var DayGrid = require('../view/week/dayGrid');
 var TimeGrid = require('../view/week/timeGrid');
+var ResourceCreationPopup = require('../view/popup/resourceCreationPopup');
 var CalendarCreationPopup = require('../view/popup/calendarCreationPopup');
 var ScheduleCreationPopup = require('../view/popup/scheduleCreationPopup');
 var ScheduleDetailPopup = require('../view/popup/scheduleDetailPopup');
+var CalendarDetailPopup = require('../view/popup/calendarDetailPopup');
+var ResourceDetailPopup = require('../view/popup/resourceDetailPopup');
 
 // Handlers
 var DayNameClick = require('../handler/time/clickDayname');
@@ -90,8 +93,12 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     var panels = [],
         vpanels = [];
     var weekView, dayNameContainer, dayNameView, vLayoutContainer, vLayout;
-    var createView, createCalendarView, onSaveNewSchedule, onSaveNewCalendar, onSetCalendars, lastVPanel;
-    var detailView, onShowDetailPopup, onDeleteSchedule, onShowEditPopup, onEditSchedule;
+    var createView, createCalendarView, createResourceView, onSaveNewSchedule, onSaveNewCalendar;
+    var onSaveNewResource, onSetCalendars, lastVPanel;
+    var detailView, detailCalendarView, detailResourceView, onShowDetailPopup, onShowCalendarDetailPopup;
+    var onShowResourceDetailPopup, onDeleteSchedule, onDeleteCalendar, onDeleteResource, onShowEditPopup;
+    var onShowCalendarEditPopup, onShowResourceEditPopup, onEditSchedule, onEditCalendar;
+    var onDisplayEditSchedule, onDisplayEditCalendar, onUpdateScheduleCalendar, onEditResource;
     var taskView = options.taskView;
     var scheduleView = options.scheduleView;
     var viewVisibilities = {
@@ -235,8 +242,10 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     // binding create schedules event
     if (options.useCreationPopup) {
         createView = new ScheduleCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources, options.usageStatistics);
         createCalendarView = new CalendarCreationPopup(
+            layoutContainer, baseController.calendars, baseController.resources, options.usageStatistics);
+        createResourceView = new ResourceCreationPopup(
             layoutContainer, baseController.calendars, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
@@ -257,8 +266,16 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             weekView.handler.creation.allday.fire('beforeCreateCalendar', calendarData);
         };
 
+        onSaveNewResource = function(resourceData) {
+            util.extend(resourceData, {
+                useCreationPopup: true
+            });
+            weekView.handler.creation.allday.fire('beforeCreateResource', resourceData);
+        };
+
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
         createCalendarView.on('beforeCreateCalendar', onSaveNewCalendar);
+        createResourceView.on('beforeCreateResource', onSaveNewResource);
     }
 
     onSetCalendars = function(calendars) {
@@ -268,6 +285,9 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (createCalendarView) {
             createCalendarView.setCalendars(calendars);
         }
+        if (createResourceView) {
+            createResourceView.setCalendars(calendars);
+        }
     };
 
     baseController.on('setCalendars', onSetCalendars);
@@ -275,10 +295,19 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     // binding popup for schedule detail
     if (options.useDetailPopup) {
         detailView = new ScheduleDetailPopup(layoutContainer, baseController.calendars);
+        detailCalendarView = new CalendarDetailPopup(layoutContainer, baseController.calendars);
+        detailResourceView = new ResourceDetailPopup(layoutContainer, baseController.calendars);
+
         onShowDetailPopup = function(eventData) {
             var scheduleId = eventData.schedule.calendarId;
+            var resourceIds;
             eventData.calendar = common.find(baseController.calendars, function(calendar) {
                 return calendar.id === scheduleId;
+            });
+
+            resourceIds = eventData.schedule.attendees || [];
+            eventData.attendees = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
             });
 
             if (options.isReadOnly) {
@@ -287,6 +316,34 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
             detailView.render(eventData);
         };
+        onShowCalendarDetailPopup = function(eventData) {
+            var calendarId = eventData.calendarId;
+            var resourceIds;
+            eventData.calendar = common.find(baseController.calendars, function(calendar) {
+                return calendar.id === calendarId;
+            });
+
+            resourceIds = eventData.calendar.resources || [];
+            eventData.resources = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
+            });
+
+            detailCalendarView.render(eventData);
+        };
+        onShowResourceDetailPopup = function(eventData) {
+            var resourceId = eventData.resourceId;
+            var calendarIds;
+            eventData.resource = common.find(baseController.resources, function(resource) {
+                return resource.id === resourceId;
+            });
+
+            calendarIds = eventData.resource.calendars || [];
+            eventData.calendars = baseController.calendars.filter(function(cal) {
+                return calendarIds.includes(cal.id);
+            });
+
+            detailResourceView.render(eventData);
+        };
         onDeleteSchedule = function(eventData) {
             if (eventData.isAllDay) {
                 weekView.handler.creation.allday.fire('beforeDeleteSchedule', eventData);
@@ -294,12 +351,33 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 weekView.handler.creation.time.fire('beforeDeleteSchedule', eventData);
             }
         };
+        onDeleteCalendar = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeDeleteCalendar', eventData);
+        };
+        onDeleteResource = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeDeleteResource', eventData);
+        };
         onEditSchedule = function(eventData) {
             if (eventData.isAllDay) {
                 weekView.handler.move.allday.fire('beforeUpdateSchedule', eventData);
             } else {
                 weekView.handler.move.time.fire('beforeUpdateSchedule', eventData);
             }
+        };
+        onEditCalendar = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeUpdateCalendar', eventData);
+        };
+        onDisplayEditSchedule = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayScheduleEditWindow', eventData);
+        };
+        onUpdateScheduleCalendar = function(eventData) {
+            weekView.handler.creation.allday.fire('afterUpdateScheduleCalendar', eventData);
+        };
+        onDisplayEditCalendar = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayCalendarEditWindow', eventData);
+        };
+        onEditResource = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeUpdateResource', eventData);
         };
 
         util.forEach(weekView.handler.click, function(panel) {
@@ -313,11 +391,36 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 createView.render(eventData);
             };
             createView.on('beforeUpdateSchedule', onEditSchedule);
+            createView.on('afterDisplayScheduleEditWindow', onDisplayEditSchedule);
+            createView.on('afterUpdateScheduleCalendar', onUpdateScheduleCalendar);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
+
+            onShowCalendarEditPopup = function(eventData) {
+                var calendars = baseController.calendars;
+                eventData.isEditMode = true;
+                createCalendarView.setCalendars(calendars);
+                createCalendarView.render(eventData);
+            };
+            createCalendarView.on('beforeUpdateCalendar', onEditCalendar);
+            createCalendarView.on('afterDisplayCalendarEditWindow', onDisplayEditCalendar);
+            detailCalendarView.on('beforeUpdateCalendar', onShowCalendarEditPopup);
+
+            onShowResourceEditPopup = function(eventData) {
+                var calendars = baseController.calendars;
+                eventData.isEditMode = true;
+                createResourceView.setCalendars(calendars);
+                createResourceView.render(eventData);
+            };
+            createResourceView.on('beforeUpdateResource', onEditResource);
+            detailResourceView.on('beforeUpdateResource', onShowResourceEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
+            detailCalendarView.on('beforeUpdateCalendar', onEditCalendar);
+            detailResourceView.on('beforeUpdateResource', onEditResource);
         }
         detailView.on('beforeDeleteSchedule', onDeleteSchedule);
+        detailCalendarView.on('beforeDeleteCalendar', onDeleteCalendar);
+        detailResourceView.on('beforeDeleteResource', onDeleteResource);
     }
 
     weekView.on('afterRender', function() {
@@ -337,6 +440,11 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         });
 
         if (options.useCreationPopup) {
+            createResourceView.off('beforeCreateResource', onSaveNewResource);
+            createResourceView.destroy();
+        }
+
+        if (options.useCreationPopup) {
             createCalendarView.off('beforeCreateCalendar', onSaveNewCalendar);
             createCalendarView.destroy();
         }
@@ -344,6 +452,16 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (options.useCreationPopup) {
             createView.off('beforeCreateSchedule', onSaveNewSchedule);
             createView.destroy();
+        }
+
+        if (options.useDetailPopup) {
+            detailResourceView.off('beforeDeleteResource', onDeleteResource);
+            detailResourceView.destroy();
+        }
+
+        if (options.useDetailPopup) {
+            detailCalendarView.off('beforeDeleteCalendar', onDeleteCalendar);
+            detailCalendarView.destroy();
         }
 
         if (options.useDetailPopup) {
@@ -373,6 +491,22 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 }
             });
         },
+        openResourceCreationPopup: function(resource) {
+            if (createResourceView) {
+                weekView.handler.creation.allday.invokeResourceCreationClick(resource);
+            }
+        },
+        showResourceCreationPopup: function(resource) {
+            if (createResourceView) {
+                createResourceView.render(resource);
+            }
+        },
+        showResourceDetailPopup: function(resource) {
+            if (onShowResourceDetailPopup) {
+                resource.guide = weekView.handler.creation.allday.guide;
+                onShowResourceDetailPopup(resource);
+            }
+        },
         openCalendarCreationPopup: function(calendar) {
             if (createCalendarView) {
                 weekView.handler.creation.allday.invokeCalendarCreationClick(calendar);
@@ -381,6 +515,12 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         showCalendarCreationPopup: function(calendar) {
             if (createCalendarView) {
                 createCalendarView.render(calendar);
+            }
+        },
+        showCalendarDetailPopup: function(calendar) {
+            if (onShowCalendarDetailPopup) {
+                calendar.guide = weekView.handler.creation.allday.guide;
+                onShowCalendarDetailPopup(calendar);
             }
         },
         openCreationPopup: function(schedule) {

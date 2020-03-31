@@ -1,5 +1,5 @@
 /**
- * @fileoverview Floating layer for  showing detail schedule
+ * @fileoverview Floating layer for  showing detail resource
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  */
 'use strict';
@@ -10,7 +10,7 @@ var util = require('tui-code-snippet');
 var config = require('../../config'),
     domevent = require('../../common/domevent'),
     domutil = require('../../common/domutil');
-var tmpl = require('../template/popup/scheduleDetailPopup.hbs');
+var tmpl = require('../template/popup/resourceDetailPopup.hbs');
 var ARROW_WIDTH_HALF = 8;
 
 /**
@@ -18,7 +18,7 @@ var ARROW_WIDTH_HALF = 8;
  * @extends {View}
  * @param {HTMLElement} container - container element
  */
-function ScheduleDetailPopup(container) {
+function ResourceDetailPopup(container) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -30,21 +30,20 @@ function ScheduleDetailPopup(container) {
      * @type {object}
      */
     this._viewModel = null;
-    this._schedule = null;
+    this._resource = null;
     this._calendar = null;
-    this._attendees = null;
 
     domevent.on(container, 'click', this._onClick, this);
 }
 
-util.inherit(ScheduleDetailPopup, View);
+util.inherit(ResourceDetailPopup, View);
 
 /**
  * Mousedown event handler for hiding popup layer when user mousedown outside of
  * layer
  * @param {MouseEvent} mouseDownEvent - mouse event object
  */
-ScheduleDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
+ResourceDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
     var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
         popupLayer = domutil.closest(target, config.classname('.floating-layer'));
 
@@ -58,7 +57,7 @@ ScheduleDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
 /**
  * @override
  */
-ScheduleDetailPopup.prototype.destroy = function() {
+ResourceDetailPopup.prototype.destroy = function() {
     this.layer.destroy();
     this.layer = null;
     domevent.off(this.container, 'click', this._onClick, this);
@@ -71,27 +70,26 @@ ScheduleDetailPopup.prototype.destroy = function() {
  * Click event handler for close button
  * @param {MouseEvent} clickEvent - mouse event object
  */
-ScheduleDetailPopup.prototype._onClick = function(clickEvent) {
+ResourceDetailPopup.prototype._onClick = function(clickEvent) {
     var target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditSchedule(target);
+    this._onClickEditResource(target);
 
-    this._onClickDeleteSchedule(target);
+    this._onClickDeleteResource(target);
 };
 
 /**
- * @fires ScheduleDetailPopup#clickEditSchedule
+ * @fires ResourceDetailPopup#clickEditResource
  * @param {HTMLElement} target - event target
  */
-ScheduleDetailPopup.prototype._onClickEditSchedule = function(target) {
-    var className = config.classname('popup-edit');
+ResourceDetailPopup.prototype._onClickEditResource = function(target) {
+    var className = config.classname('popup-edit-resource');
 
     if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
-        this.fire('beforeUpdateSchedule', {
-            schedule: this._schedule,
-            attendees: this._attendees,
+        this.fire('beforeUpdateResource', {
+            resource: this._resource,
             triggerEventName: 'click',
-            target: this._scheduleEl
+            trigger: this._resourceEl
         });
 
         this.hide();
@@ -99,15 +97,15 @@ ScheduleDetailPopup.prototype._onClickEditSchedule = function(target) {
 };
 
 /**
- * @fires ScheduleDetailPopup#clickEditSchedule
+ * @fires ResourceDetailPopup#clickEditResource
  * @param {HTMLElement} target - event target
  */
-ScheduleDetailPopup.prototype._onClickDeleteSchedule = function(target) {
-    var className = config.classname('popup-delete');
+ResourceDetailPopup.prototype._onClickDeleteResource = function(target) {
+    var className = config.classname('popup-delete-resource');
 
     if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
-        this.fire('beforeDeleteSchedule', {
-            schedule: this._schedule
+        this.fire('beforeDeleteResource', {
+            resource: this._resource
         });
 
         this.hide();
@@ -118,21 +116,31 @@ ScheduleDetailPopup.prototype._onClickDeleteSchedule = function(target) {
  * @override
  * @param {object} viewModel - view model from factory/monthView
  */
-ScheduleDetailPopup.prototype.render = function(viewModel) {
+ResourceDetailPopup.prototype.render = function(viewModel) {
     var layer = this.layer;
     var self = this;
+    var boxElement, guideElements;
 
     layer.setContent(tmpl({
-        schedule: viewModel.schedule,
-        calendar: viewModel.calendar,
-        attendees: viewModel.attendees
+        resource: viewModel.resource,
+        calendars: viewModel.calendars
     }));
     layer.show();
-    this._setPopupPositionAndArrowDirection(viewModel.event);
 
-    this._schedule = viewModel.schedule;
-    this._calendar = viewModel.calendar;
-    this._attendees = viewModel.attendees;
+    if (viewModel.trigger) {
+        boxElement = domutil.closest(viewModel.trigger, config.classname('.left-nav-bar-resources-item')) ||
+            viewModel.target;
+
+        this._resourceEl = boxElement;
+    } else {
+        this.guide = viewModel.guide;
+        guideElements = this._getGuideElements(this.guide);
+        boxElement = guideElements.length ? guideElements[0] : null;
+    }
+
+    this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
+
+    this._resource = viewModel.resource;
 
     util.debounce(function() {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
@@ -141,9 +149,9 @@ ScheduleDetailPopup.prototype.render = function(viewModel) {
 
 /**
  * Set popup position and arrow direction to apear near guide element
- * @param {Event} event - creation guide element
+ * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
  */
-ScheduleDetailPopup.prototype._setPopupPositionAndArrowDirection = function(event) {
+ResourceDetailPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
     var layer = domutil.find(config.classname('.popup'), this.layer.container);
     var layerSize = {
         width: layer.offsetWidth,
@@ -158,18 +166,11 @@ ScheduleDetailPopup.prototype._setPopupPositionAndArrowDirection = function(even
         left: parentRect.left,
         top: parentRect.top
     };
-    var scheduleEl = event.target || event.srcElement;
-    var blockEl = domutil.closest(scheduleEl, config.classname('.time-date-schedule-block'))
-        || domutil.closest(scheduleEl, config.classname('.weekday-schedule'))
-        || scheduleEl;
-    var scheduleBound = blockEl.getBoundingClientRect();
     var pos;
 
-    this._scheduleEl = blockEl;
-
-    pos = this._calcRenderingData(layerSize, windowSize, scheduleBound);
-    pos.x -= parentBounds.left + 4;
-    pos.y -= (parentBounds.top + ARROW_WIDTH_HALF);
+    pos = this._calcRenderingData(layerSize, windowSize, guideBound);
+    pos.x -= parentBounds.left;
+    pos.y -= (parentBounds.top + 6);
     this.layer.setPosition(pos.x, pos.y);
     this._setArrowDirection(pos.arrow);
 };
@@ -181,7 +182,7 @@ ScheduleDetailPopup.prototype._setPopupPositionAndArrowDirection = function(even
  * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
  * @returns {PopupRenderingData} rendering position of popup and popup arrow
  */
-ScheduleDetailPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+ResourceDetailPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
     var guideVerticalCenter = (guideBound.top + guideBound.bottom) / 2;
     var x = guideBound.right;
     var y = guideVerticalCenter;
@@ -226,7 +227,7 @@ ScheduleDetailPopup.prototype._calcRenderingData = function(layerSize, parentSiz
  * Set arrow's direction and position
  * @param {Object} arrow rendering data for popup arrow
  */
-ScheduleDetailPopup.prototype._setArrowDirection = function(arrow) {
+ResourceDetailPopup.prototype._setArrowDirection = function(arrow) {
     var direction = arrow.direction || 'arrow-left';
     var arrowEl = domutil.find(config.classname('.popup-arrow'), this.layer.container);
     var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
@@ -244,7 +245,7 @@ ScheduleDetailPopup.prototype._setArrowDirection = function(arrow) {
 /**
  * Hide layer
  */
-ScheduleDetailPopup.prototype.hide = function() {
+ResourceDetailPopup.prototype.hide = function() {
     this.layer.hide();
 
     if (this.guide) {
@@ -258,10 +259,10 @@ ScheduleDetailPopup.prototype.hide = function() {
 /**
  * refresh layer
  */
-ScheduleDetailPopup.prototype.refresh = function() {
+ResourceDetailPopup.prototype.refresh = function() {
     if (this._viewModel) {
         this.layer.setContent(this.tmpl(this._viewModel));
     }
 };
 
-module.exports = ScheduleDetailPopup;
+module.exports = ResourceDetailPopup;

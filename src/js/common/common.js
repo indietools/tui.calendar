@@ -36,6 +36,34 @@ module.exports = {
     },
 
     /**
+     * @param {...*} initItems - items to add newly created collection.
+     * @returns {Collection} new collection for schedule models.
+     */
+    createCalendarCollection: function(initItems) {    // eslint-disable-line
+        var collection = new Collection(scheduleIDGetter);
+
+        if (arguments.length) {
+            collection.add.apply(collection, arguments);
+        }
+
+        return collection;
+    },
+
+    /**
+     * @param {...*} initItems - items to add newly created collection.
+     * @returns {Collection} new collection for schedule models.
+     */
+    createResourceCollection: function(initItems) {    // eslint-disable-line
+        var collection = new Collection(scheduleIDGetter);
+
+        if (arguments.length) {
+            collection.add.apply(collection, arguments);
+        }
+
+        return collection;
+    },
+
+    /**
      * Get ratio value.
      *
      * a : b = y : X;
@@ -345,6 +373,18 @@ module.exports = {
 
         util.forEach(propNames, function(propName) {
             if (data[propName] && calendar[propName] !== data[propName]) {
+                changes[propName] = data[propName];
+            }
+        });
+
+        return util.isEmpty(changes) ? null : changes;
+    },
+
+    getResourceChanges: function(resource, propNames, data) {
+        var changes = {};
+
+        util.forEach(propNames, function(propName) {
+            if (data[propName] && resource[propName] !== data[propName]) {
                 changes[propName] = data[propName];
             }
         });

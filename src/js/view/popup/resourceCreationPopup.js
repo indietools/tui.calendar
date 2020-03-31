@@ -10,9 +10,8 @@ var util = require('tui-code-snippet');
 var config = require('../../config');
 var domevent = require('../../common/domevent');
 var domutil = require('../../common/domutil');
-var colorutil = require('../../common/colorutil');
 var common = require('../../common/common');
-var tmpl = require('../template/popup/calendarCreationPopup.hbs');
+var tmpl = require('../template/popup/resourceCreationPopup.hbs');
 var MAX_WEEK_OF_MONTH = 6;
 var ARROW_WIDTH_HALF = 8;
 
@@ -21,10 +20,9 @@ var ARROW_WIDTH_HALF = 8;
  * @extends {View}
  * @param {HTMLElement} container - container element
  * @param {Array.<Calendar>} calendars - calendar list used to create new calendar
- * @param {Array.<Resource>} resources - resource list used when creating new calendar
  * @param {boolean} usageStatistics - GA tracking options in Calendar
  */
-function CalendarCreationPopup(container, calendars, resources, usageStatistics) {
+function ResourceCreationPopup(container, calendars, usageStatistics) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -36,28 +34,30 @@ function CalendarCreationPopup(container, calendars, resources, usageStatistics)
      * @type {object}
      */
     this._viewModel = null;
-    this._selectedCal = null;
-    this._calendar = null;
+    this._selectedCals = [];
+    this._resource = null;
     this.calendars = calendars;
-    this.resources = resources;
-    this._focusedDropdown = null;
+    this._focusedSelect = null;
     this._usageStatistics = usageStatistics;
     this._onClickListeners = [
+        this._selectSelectMenuItem.bind(this),
+        this._toggleSelectMenuView.bind(this),
+        this._closeSelectMenuView.bind(this, null),
         this._closePopup.bind(this),
-        this._onClickSaveCalendar.bind(this)
+        this._onClickSaveResource.bind(this)
     ];
 
     domevent.on(container, 'click', this._onClick, this);
 }
 
-util.inherit(CalendarCreationPopup, View);
+util.inherit(ResourceCreationPopup, View);
 
 /**
  * Mousedown event handler for hiding popup layer when user mousedown outside of
  * layer
  * @param {MouseEvent} mouseDownEvent - mouse event object
  */
-CalendarCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
+ResourceCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
     var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
         popupLayer = domutil.closest(target, config.classname('.floating-layer'));
 
@@ -71,7 +71,7 @@ CalendarCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
 /**
  * @override
  */
-CalendarCreationPopup.prototype.destroy = function() {
+ResourceCreationPopup.prototype.destroy = function() {
     this.layer.destroy();
     this.layer = null;
     domevent.off(this.container, 'click', this._onClick, this);
@@ -84,7 +84,7 @@ CalendarCreationPopup.prototype.destroy = function() {
  * Click event handler for close button
  * @param {MouseEvent} clickEvent - mouse event object
  */
-CalendarCreationPopup.prototype._onClick = function(clickEvent) {
+ResourceCreationPopup.prototype._onClick = function(clickEvent) {
     var target = (clickEvent.target || clickEvent.srcElement);
 
     util.forEach(this._onClickListeners, function(listener) {
@@ -97,7 +97,7 @@ CalendarCreationPopup.prototype._onClick = function(clickEvent) {
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether popup layer is closed or not
  */
-CalendarCreationPopup.prototype._closePopup = function(target) {
+ResourceCreationPopup.prototype._closePopup = function(target) {
     var className = config.classname('popup-close');
 
     if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
@@ -110,143 +110,109 @@ CalendarCreationPopup.prototype._closePopup = function(target) {
 };
 
 /**
- * Toggle dropdown menu view, when user clicks dropdown button
+ * Toggle select menu view, when user clicks select button
  * @param {HTMLElement} target click event target
- * @returns {boolean} whether user clicked dropdown button or not
+ * @returns {boolean} whether user clicked select button or not
  */
-CalendarCreationPopup.prototype._toggleDropdownMenuView = function(target) {
-    var className = config.classname('dropdown-button');
-    var dropdownBtn = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
+ResourceCreationPopup.prototype._toggleSelectMenuView = function(target) {
+    var className = config.classname('select-button');
+    var selectBtn = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
 
-    if (!dropdownBtn) {
+    if (!selectBtn) {
         return false;
     }
 
-    if (domutil.hasClass(dropdownBtn.parentNode, config.classname('open'))) {
-        this._closeDropdownMenuView(dropdownBtn.parentNode);
+    if (domutil.hasClass(selectBtn.parentNode, config.classname('open'))) {
+        this._closeSelectMenuView(selectBtn.parentNode);
     } else {
-        this._openDropdownMenuView(dropdownBtn.parentNode);
+        this._openSelectMenuView(selectBtn.parentNode);
     }
 
     return true;
 };
 
 /**
- * Close drop down menu
- * @param {HTMLElement} dropdown - dropdown element that has a opened dropdown menu
+ * Close select menu
+ * @param {HTMLElement} select - select element that has a opened select menu
  */
-CalendarCreationPopup.prototype._closeDropdownMenuView = function(dropdown) {
-    dropdown = dropdown || this._focusedDropdown;
-    if (dropdown) {
-        domutil.removeClass(dropdown, config.classname('open'));
-        this._focusedDropdown = null;
+ResourceCreationPopup.prototype._closeSelectMenuView = function(select) {
+    select = select || this._focusedSelect;
+    if (select) {
+        domutil.removeClass(select, config.classname('open'));
+        this._focusedSelect = null;
     }
 };
 
 /**
- * Open drop down menu
- * @param {HTMLElement} dropdown - dropdown element that has a closed dropdown menu
+ * Open selectn menu
+ * @param {HTMLElement} select - select element that has a closed select menu
  */
-CalendarCreationPopup.prototype._openDropdownMenuView = function(dropdown) {
-    domutil.addClass(dropdown, config.classname('open'));
-    this._focusedDropdown = dropdown;
+ResourceCreationPopup.prototype._openSelectMenuView = function(select) {
+    domutil.addClass(select, config.classname('open'));
+    this._focusedSelect = select;
 };
 
 /**
- * If click dropdown menu item, close dropdown menu
+ * If click select menu item, close select menu
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether
  */
-CalendarCreationPopup.prototype._selectDropdownMenuItem = function(target) {
-    var itemClassName = config.classname('dropdown-menu-item');
-    var iconClassName = config.classname('icon');
-    var contentClassName = config.classname('content');
+ResourceCreationPopup.prototype._selectSelectMenuItem = function(target) {
+    var itemClassName = config.classname('select-menu-item');
+    var selectedClassName = config.classname('select-menu-item-selected');
     var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
-    var bgColor, title, dropdown, dropdownBtn;
+    var select, add, cSpan;
 
     if (!selectedItem) {
         return false;
     }
 
-    bgColor = domutil.find('.' + iconClassName, selectedItem).style.backgroundColor || 'transparent';
-    title = domutil.find('.' + contentClassName, selectedItem).innerHTML;
-
-    dropdown = domutil.closest(selectedItem, config.classname('.dropdown'));
-    dropdownBtn = domutil.find(config.classname('.dropdown-button'), dropdown);
-    domutil.find('.' + contentClassName, dropdownBtn).innerText = title;
-
-    if (domutil.hasClass(dropdown, config.classname('section-calendar'))) {
-        domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
-        this._selectedCal = common.find(this.calendars, function(cal) {
-            return cal.id === domutil.getData(selectedItem, 'calendarId');
-        });
+    if (domutil.hasClass(selectedItem, selectedClassName)) {
+        domutil.removeClass(selectedItem, selectedClassName);
+        add = false;
+    } else {
+        domutil.addClass(selectedItem, selectedClassName);
+        add = true;
     }
 
-    domutil.removeClass(dropdown, config.classname('open'));
+    select = domutil.closest(selectedItem, config.classname('.select'));
+
+    if (domutil.hasClass(select, config.classname('section-calendar'))) {
+        if (add) {
+            this._selectedCals = this._selectedCals.concat(
+                this.calendars.filter(function(cal) {
+                    return cal.id === domutil.getData(selectedItem, 'calendarId');
+                })
+            );
+        } else {
+            this._selectedCals = this._selectedCals.filter(function(cal) {
+                return cal.id !== domutil.getData(selectedItem, 'calendarId');
+            });
+        }
+    }
+
+    cSpan = document.getElementById('countSpan');
+    cSpan.innerText = '(' + this._selectedCals.length.toString() + ')';
 
     return true;
 };
 
 /**
- * Toggle allday checkbox state
- * @param {HTMLElement} target click event target
- * @returns {boolean} whether event target is allday section or not
- */
-CalendarCreationPopup.prototype._toggleIsAllday = function(target) {
-    var className = config.classname('section-allday');
-    var alldaySection = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
-    var checkbox;
-
-    if (alldaySection) {
-        checkbox = domutil.find(config.classname('.checkbox-square'), alldaySection);
-        checkbox.checked = !checkbox.checked;
-
-        return true;
-    }
-
-    return false;
-};
-
-/**
- * Toggle private button
- * @param {HTMLElement} target click event target
- * @returns {boolean} whether event target is private section or not
- */
-CalendarCreationPopup.prototype._toggleIsPrivate = function(target) {
-    var className = config.classname('section-private');
-    var privateSection = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
-
-    if (privateSection) {
-        if (domutil.hasClass(privateSection, config.classname('public'))) {
-            domutil.removeClass(privateSection, config.classname('public'));
-        } else {
-            domutil.addClass(privateSection, config.classname('public'));
-        }
-
-        return true;
-    }
-
-    return false;
-};
-
-/**
- * Save new calendar if user clicked save button
- * @emits CalendarCreationPopup#saveCalendar
+ * Save new resource if user clicked save button
+ * @emits ResourceCreationPopup#saveResource
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether save button is clicked or not
  */
-CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
-    var className = config.classname('calendar-popup-save');
+ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
+    var className = config.classname('resource-popup-save');
     var cssPrefix = config.cssPrefix;
-    var name, bgColor, resources, resourcesArray, changes;
+    var name, calendars, changes;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
     }
 
-    name = domutil.get(cssPrefix + 'calendar-title');
-    bgColor = domutil.get(cssPrefix + 'calendar-creation-color-input');
-    resources = domutil.get(cssPrefix + 'calendar-creation-resources-input');
+    name = domutil.get(cssPrefix + 'resource-title');
 
     if (!name.value) {
         name.focus();
@@ -254,47 +220,34 @@ CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
         return true;
     }
 
-    if (!bgColor.value) {
-        // TODO: Also check for value repeated in other calendars.
-        bgColor.focus();
-
-        return true;
-    }
-
-    resourcesArray = resources.value.split(',') || [];
+    calendars = Array.from(document.querySelectorAll('.tui-full-calendar-select-menu > .tui-full-calendar-select-menu-item-selected')).map(function(item) {
+        return item.dataset.calendarId;
+    });
 
     if (this._isEditMode) {
-        changes = common.getCalendarChanges(
-            this._calendar,
-            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'resources', 'checked'],
+        changes = common.getResourceChanges(
+            this._resource,
+            ['name', 'calendars', 'checked'],
             {
                 name: name.value,
-                bgColor: bgColor.value,
-                color: colorutil.determineTextforBackground(bgColor.value),
-                dragBgColor: bgColor.value,
-                borderColor: bgColor.value,
-                resources: resourcesArray,
+                calendars: calendars,
                 checked: true
             }
         );
 
-        this.fire('beforeUpdateCalendar', {
-            calendar: this._calendar,
+        this.fire('beforeUpdateResource', {
+            resource: this._resource,
             changes: changes
         });
     } else {
         /**
-         * @event CalendarCreationPopup#beforeCreateCalendar
+         * @event ResourceCreationPopup#beforeCreateResource
          * @type {object}
-         * @property {Calendar} calendar - new calendar instance to be added
+         * @property {Resource} resource - new resource instance to be added
          */
-        this.fire('beforeCreateCalendar', {
+        this.fire('beforeCreateResource', {
             name: name.value,
-            bgColor: bgColor.value,
-            color: colorutil.determineTextforBackground(bgColor.value),
-            dragBgColor: bgColor.value,
-            borderColor: bgColor.value,
-            resources: resourcesArray,
+            calendars: calendars,
             checked: true
         });
     }
@@ -308,7 +261,7 @@ CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
  * @override
  * @param {object} viewModel - view model from factory/monthView
  */
-CalendarCreationPopup.prototype.render = function(viewModel) {
+ResourceCreationPopup.prototype.render = function(viewModel) {
     var calendars = this.calendars;
     var layer = this.layer;
     var self = this;
@@ -316,7 +269,7 @@ CalendarCreationPopup.prototype.render = function(viewModel) {
 
     viewModel.zIndex = this.layer.zIndex + 5;
     viewModel.calendars = calendars;
-    this._isEditMode = viewModel.calendar;
+    this._isEditMode = viewModel.resource;
 
     if (viewModel.trigger) {
         boxElement = viewModel.trigger;
@@ -327,16 +280,15 @@ CalendarCreationPopup.prototype.render = function(viewModel) {
     }
 
     if (this._isEditMode) {
-        this._selectedCal = viewModel.calendar;
-        this._calendar = viewModel.calendar;
-        viewModel.bgColor = viewModel.calendar.bgColor;
-        viewModel.name = viewModel.calendar.name;
+        this._resource = viewModel.resource;
+        this._selectedCals = this.calendars.filter(function(cal) {
+            return viewModel.resource.calendars.includes(cal.id);
+        }) || [];
+        viewModel.selectedIds = viewModel.resource.calendars || [];
+        viewModel.name = viewModel.resource.name;
     } else {
-        viewModel.bgColor = '#' + (function co(lor) {
-            var c = (lor += [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'][Math.floor(Math.random() * 16)]);
-            return c && (lor.length === 6) ? lor : co(lor);
-        })('');
-        this._selectedCal = calendars[0];
+        viewModel.selectedIds = [];
+        this._selectedCals = [];
     }
 
     layer.setContent(tmpl(viewModel));
@@ -349,18 +301,13 @@ CalendarCreationPopup.prototype.render = function(viewModel) {
     util.debounce(function() {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
     })();
-
-    this.fire('afterDisplayCalendarEditWindow', {
-        calendar: this._calendar,
-        resources: viewModel.resources
-    });
 };
 
 /**
  * Set popup position and arrow direction to apear near guide element
  * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
  */
-CalendarCreationPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+ResourceCreationPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
     var layer = domutil.find(config.classname('.popup'), this.layer.container);
     var layerSize = {
         width: layer.offsetWidth,
@@ -391,7 +338,7 @@ CalendarCreationPopup.prototype._setPopupPositionAndArrowDirection = function(gu
  * @param {MonthCreationGuide|TimeCreationGuide|AlldayCreationGuide} guide - creation guide
  * @returns {Array.<HTMLElement>} creation guide element
  */
-CalendarCreationPopup.prototype._getGuideElements = function(guide) {
+ResourceCreationPopup.prototype._getGuideElements = function(guide) {
     var guideElements = [];
     var i = 0;
 
@@ -413,7 +360,7 @@ CalendarCreationPopup.prototype._getGuideElements = function(guide) {
  * @param {Array.<HTMLElement>} guideElements - creation guide elements
  * @returns {Object} - popup bound data
  */
-CalendarCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guideElements) {
+ResourceCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guideElements) {
     var bound;
 
     if (!guideElements.length) {
@@ -437,7 +384,7 @@ CalendarCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guide
  * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
  * @returns {PopupRenderingData} rendering position of popup and popup arrow
  */
-CalendarCreationPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+ResourceCreationPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
     var guideHorizontalCenter = (guideBound.left + guideBound.right) / 2;
     var x = guideHorizontalCenter - (layerSize.width / 2);
     var y = guideBound.top - layerSize.height + 3;
@@ -482,7 +429,7 @@ CalendarCreationPopup.prototype._calcRenderingData = function(layerSize, parentS
  * Set arrow's direction and position
  * @param {Object} arrow rendering data for popup arrow
  */
-CalendarCreationPopup.prototype._setArrowDirection = function(arrow) {
+ResourceCreationPopup.prototype._setArrowDirection = function(arrow) {
     var direction = arrow.direction || 'arrow-bottom';
     var arrowEl = domutil.get(config.classname('popup-arrow'));
     var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
@@ -500,7 +447,7 @@ CalendarCreationPopup.prototype._setArrowDirection = function(arrow) {
 /**
  * Hide layer
  */
-CalendarCreationPopup.prototype.hide = function() {
+ResourceCreationPopup.prototype.hide = function() {
     this.layer.hide();
 
     if (this.guide) {
@@ -514,7 +461,7 @@ CalendarCreationPopup.prototype.hide = function() {
 /**
  * refresh layer
  */
-CalendarCreationPopup.prototype.refresh = function() {
+ResourceCreationPopup.prototype.refresh = function() {
     if (this._viewModel) {
         this.layer.setContent(this.tmpl(this._viewModel));
     }
@@ -524,8 +471,8 @@ CalendarCreationPopup.prototype.refresh = function() {
  * Set calendar list
  * @param {Array.<Calendar>} calendars - calendar list
  */
-CalendarCreationPopup.prototype.setCalendars = function(calendars) {
+ResourceCreationPopup.prototype.setCalendars = function(calendars) {
     this.calendars = calendars || [];
 };
 
-module.exports = CalendarCreationPopup;
+module.exports = ResourceCreationPopup;

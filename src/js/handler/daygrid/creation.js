@@ -131,6 +131,24 @@ DayGridCreation.prototype.checkExpectedCondition = function(target) {
 };
 
 /**
+ * Request resource model creation to controller by custom resource.
+ * @fires {DayGridCreation#beforeCreateResource}
+ * @param {object} resourceData - resource data from DayGridCreation module.
+ */
+DayGridCreation.prototype._createResource = function(resourceData) {
+    /**
+     * @event {DayGridCreation#beforeCreateResource}
+     * @type {object}
+     * @property {DayGridCreationGuide} guide - DayGridCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var resourceViewModelData = resourceData;
+    resourceViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateResource', resourceViewModelData);
+};
+
+/**
  * Request calendar model creation to controller by custom calendar.
  * @fires {DayGridCreation#beforeCreateCalendar}
  * @param {object} calendarData - calendar data from DayGridCreation module.
@@ -342,6 +360,20 @@ DayGridCreation.prototype._onDblClick = function(clickEventData) {
     this._createSchedule(scheduleData);
 
     this._requestOnClick = false;
+};
+
+/**
+ * Invoke creation click
+ * @param {Resource} resource - resource instance
+ */
+DayGridCreation.prototype.invokeResourceCreationClick = function(resource) {
+    var resourceData;
+
+    resourceData = resource;
+
+    // this.fire('click', resourceData);
+
+    this._createResource(resourceData);
 };
 
 /**

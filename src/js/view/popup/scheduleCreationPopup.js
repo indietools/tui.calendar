@@ -23,9 +23,10 @@ var ARROW_WIDTH_HALF = 8;
  * @extends {View}
  * @param {HTMLElement} container - container element
  * @param {Array.<Calendar>} calendars - calendar list used to create new schedule
+ * @param {Array.<Resource>} attendees - attendee list used to create new schedule
  * @param {boolean} usageStatistics - GA tracking options in Calendar
  */
-function ScheduleCreationPopup(container, calendars, usageStatistics) {
+function ScheduleCreationPopup(container, calendars, attendees, usageStatistics) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -40,6 +41,7 @@ function ScheduleCreationPopup(container, calendars, usageStatistics) {
     this._selectedCal = null;
     this._schedule = null;
     this.calendars = calendars;
+    this.resources = attendees;
     this._focusedDropdown = null;
     this._usageStatistics = usageStatistics;
     this._onClickListeners = [
@@ -167,7 +169,7 @@ ScheduleCreationPopup.prototype._selectDropdownMenuItem = function(target) {
     var iconClassName = config.classname('icon');
     var contentClassName = config.classname('content');
     var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
-    var bgColor, title, dropdown, dropdownBtn;
+    var bgColor, title, dropdown, dropdownBtn, prevCalendar;
 
     if (!selectedItem) {
         return false;
@@ -181,6 +183,7 @@ ScheduleCreationPopup.prototype._selectDropdownMenuItem = function(target) {
     domutil.find('.' + contentClassName, dropdownBtn).innerText = title;
 
     if (domutil.hasClass(dropdown, config.classname('section-calendar'))) {
+        prevCalendar = this._selectedCal;
         domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
         this._selectedCal = common.find(this.calendars, function(cal) {
             return cal.id === domutil.getData(selectedItem, 'calendarId');
@@ -188,6 +191,11 @@ ScheduleCreationPopup.prototype._selectDropdownMenuItem = function(target) {
     }
 
     domutil.removeClass(dropdown, config.classname('open'));
+
+    this.fire('afterUpdateScheduleCalendar', {
+        prevCalendar: prevCalendar,
+        newCalendar: this._selectedCal
+    });
 
     return true;
 };
@@ -245,7 +253,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     var cssPrefix = config.cssPrefix;
     var title, isPrivate, location, isAllDay, startDate, endDate, state;
     var start, end, calendarId;
-    var changes;
+    var changes, attendees, attendeesArray;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
@@ -254,6 +262,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     title = domutil.get(cssPrefix + 'schedule-title');
     startDate = new TZDate(this.rangePicker.getStartDate()).toLocalTime();
     endDate = new TZDate(this.rangePicker.getEndDate()).toLocalTime();
+    attendees = domutil.get(cssPrefix + 'schedule-creation-resources-input');
 
     if (!title.value) {
         title.focus();
@@ -282,10 +291,12 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
         calendarId = this._selectedCal.id;
     }
 
+    attendeesArray = attendees.value.split(',') || [];
+
     if (this._isEditMode) {
         changes = common.getScheduleChanges(
             this._schedule,
-            ['calendarId', 'title', 'location', 'start', 'end', 'isAllDay', 'state'],
+            ['calendarId', 'title', 'location', 'start', 'end', 'isAllDay', 'attendees', 'state'],
             {
                 calendarId: calendarId,
                 title: title.value,
@@ -293,6 +304,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
                 start: start,
                 end: end,
                 isAllDay: isAllDay,
+                attendees: attendeesArray,
                 state: state.innerText
             }
         );
@@ -325,6 +337,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
             start: start,
             end: end,
             isAllDay: isAllDay,
+            attendees: attendeesArray,
             state: state.innerText
         });
     }
@@ -340,24 +353,36 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
  */
 ScheduleCreationPopup.prototype.render = function(viewModel) {
     var calendars = this.calendars;
+    var resources = this.resources;
+    var attendees;
+    var selectedCal;
     var layer = this.layer;
     var self = this;
     var boxElement, guideElements;
 
     viewModel.zIndex = this.layer.zIndex + 5;
     viewModel.calendars = calendars;
-    if (calendars.length) {
-        viewModel.selectedCal = this._selectedCal = calendars[0];
+    if (calendars.length > 0) {
+        selectedCal = (viewModel.schedule ? viewModel.schedule.calendarId : calendars[0].id);
+        viewModel.selectedCal = this._selectedCal = calendars.find(function(c) {
+            return selectedCal === c.id;
+        });
     }
 
     this._isEditMode = viewModel.schedule && viewModel.schedule.id;
     if (this._isEditMode) {
         boxElement = viewModel.target;
+        attendees = viewModel.attendees;
         viewModel = this._makeEditModeData(viewModel);
     } else {
         this.guide = viewModel.guide;
         guideElements = this._getGuideElements(this.guide);
         boxElement = guideElements.length ? guideElements[0] : null;
+
+        // If we are creating a new schedule, prepopulate resources.
+        attendees = resources.filter(function(r) {
+            return viewModel.selectedCal.resources.includes(r.id);
+        });
     }
     layer.setContent(tmpl(viewModel));
     this._createDatepicker(viewModel.start, viewModel.end, viewModel.isAllDay);
@@ -370,6 +395,11 @@ ScheduleCreationPopup.prototype.render = function(viewModel) {
     util.debounce(function() {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
     })();
+
+    this.fire('afterDisplayScheduleEditWindow', {
+        schedule: this._schedule,
+        attendees: attendees
+    });
 };
 
 /**

@@ -55,6 +55,16 @@ var helpers = {
     },
 
     /**
+     * IN
+     * @param {*} a - a
+     * @param {array} b - b
+     * @returns {boolean} or
+     */
+    'in': function(a, b) {
+        return b.includes(a);
+    },
+
+    /**
      * Compare object or apply logical operation by customizable oper parameter
      * @param {*} a - a
      * @param {string} oper - operator ex) '==', '<'
