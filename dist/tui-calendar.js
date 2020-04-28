@@ -1,6 +1,6 @@
 /*!
  * TOAST UI Calendar
- * @version 1.12.11 | Mon Mar 30 2020
+ * @version 1.12.11 | Tue Apr 28 2020
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  * @license MIT
  */
@@ -20991,6 +20991,7 @@ CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
 
     if (!name.value) {
         name.focus();
+        name.parentElement.style.border = '1px solid red';
 
         return true;
     }
@@ -20998,6 +20999,7 @@ CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
     if (!bgColor.value) {
         // TODO: Also check for value repeated in other calendars.
         bgColor.focus();
+        bgColor.parentElement.style.border = '1px solid red';
 
         return true;
     }
@@ -21782,6 +21784,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
 
     if (!name.value) {
         name.focus();
+        name.parentElement.style.border = '1px solid red';
 
         return true;
     }
@@ -22602,6 +22605,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
 
     if (!title.value) {
         title.focus();
+        title.parentElement.style.border = '1px solid red';
 
         return true;
     }
