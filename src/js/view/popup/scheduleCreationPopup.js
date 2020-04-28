@@ -383,7 +383,7 @@ ScheduleCreationPopup.prototype.render = function(viewModel) {
         // If we are creating a new schedule, prepopulate resources.
         attendees = resources.filter(function(r) {
             return viewModel.selectedCal.resources.includes(r.id);
-        });
+        }) || [];
     }
     layer.setContent(tmpl(viewModel));
     this._createDatepicker(viewModel.start, viewModel.end, viewModel.isAllDay);
