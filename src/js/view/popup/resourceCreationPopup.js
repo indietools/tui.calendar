@@ -216,6 +216,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
 
     if (!name.value) {
         name.focus();
+        name.parentElement.style.border = '1px solid red';
 
         return true;
     }

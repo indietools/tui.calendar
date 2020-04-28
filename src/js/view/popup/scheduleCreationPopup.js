@@ -266,6 +266,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
 
     if (!title.value) {
         title.focus();
+        title.parentElement.style.border = '1px solid red';
 
         return true;
     }

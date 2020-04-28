@@ -250,6 +250,7 @@ CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
 
     if (!name.value) {
         name.focus();
+        name.parentElement.style.border = '1px solid red';
 
         return true;
     }
@@ -257,6 +258,7 @@ CalendarCreationPopup.prototype._onClickSaveCalendar = function(target) {
     if (!bgColor.value) {
         // TODO: Also check for value repeated in other calendars.
         bgColor.focus();
+        bgColor.parentElement.style.border = '1px solid red';
 
         return true;
     }
