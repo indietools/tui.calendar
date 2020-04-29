@@ -1,6 +1,6 @@
 /*!
  * TOAST UI Calendar
- * @version 1.12.11 | Tue Apr 28 2020
+ * @version 1.12.11 | Wed Apr 29 2020
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  * @license MIT
  */
@@ -22720,9 +22720,13 @@ ScheduleCreationPopup.prototype.render = function(viewModel) {
         boxElement = guideElements.length ? guideElements[0] : null;
 
         // If we are creating a new schedule, prepopulate resources.
-        attendees = resources.filter(function(r) {
-            return viewModel.selectedCal.resources.includes(r.id);
-        }) || [];
+        if (viewModel.selectedCal.resources) {
+            attendees = resources.filter(function(r) {
+                return viewModel.selectedCal.resources.includes(r.id);
+            });
+        } else {
+            attendees = [];
+        }
     }
     layer.setContent(tmpl(viewModel));
     this._createDatepicker(viewModel.start, viewModel.end, viewModel.isAllDay);
