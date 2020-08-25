@@ -82,6 +82,8 @@ var helpers = {
                 return (a !== b) ? options.fn(this) : options.inverse(this);
             case '<':
                 return (a < b) ? options.fn(this) : options.inverse(this);
+            case '>':
+                return (a > b) ? options.fn(this) : options.inverse(this);
             case '||':
                 return (a || b) ? options.fn(this) : options.inverse(this);
             default:
@@ -218,6 +220,29 @@ var helpers = {
 
     'reverse': function(array) {
         return array.slice().reverse();
+    },
+
+    'index': function(array, index) {
+        return array[index];
+    },
+
+    'compare': function(a, oper, b) {
+        switch (oper) {
+            case '==':
+                return (a == b);  // eslint-disable-line
+            case '===':
+                return (a === b);
+            case '!==':
+                return (a !== b);
+            case '<':
+                return (a < b);
+            case '>':
+                return (a > b);
+            case '||':
+                return (a || b);
+            default:
+                throw new Error('Not match operation');
+        }
     },
 
     /**********
@@ -405,6 +430,10 @@ var helpers = {
         return 'All day';
     },
 
+    'popupIsPerson-tmpl': function() {
+        return 'Person? (Not a place or thing.)';
+    },
+
     'popupStateFree-tmpl': function() {
         return 'Free';
     },
@@ -462,8 +491,14 @@ var helpers = {
     'popupEdit-tmpl': function() {
         return 'Edit';
     },
+    'popupInvite-tmpl': function() {
+        return 'Invite';
+    },
     'popupDelete-tmpl': function() {
         return 'Delete';
+    },
+    'popupCancel-tmpl': function() {
+        return 'Close';
     }
 };
 

@@ -1,6 +1,6 @@
 <div class="{{CSS_PREFIX}}popup">
     <div class="{{CSS_PREFIX}}popup-container">
-        <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}dropdown {{CSS_PREFIX}}close {{CSS_PREFIX}}section-calendar{{#unless calendars.length}} {{CSS_PREFIX}}hide{{/unless}}">
+        <!-- <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}dropdown {{CSS_PREFIX}}close {{CSS_PREFIX}}section-calendar{{#unless calendars.length}} {{CSS_PREFIX}}hide{{/unless}}">
             <button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}dropdown-button {{CSS_PREFIX}}popup-section-item">
                 <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}calendar-dot" style="background-color: {{selectedCal.bgColor}}"></span>
                 <span id="{{CSS_PREFIX}}schedule-calendar" class="{{CSS_PREFIX}}content">{{selectedCal.name}}</span>
@@ -15,13 +15,13 @@
                     </li>
                 {{/each}}
             </ul>
-        </div>
+        </div> -->
         <div class="{{CSS_PREFIX}}popup-section">
             <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-title">
             <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-title"></span>
             <input id="{{CSS_PREFIX}}schedule-title" class="{{CSS_PREFIX}}content" placeholder="{{titlePlaceholder-tmpl}}" value="{{title}}"></span>
             </div>
-            <button id="{{CSS_PREFIX}}schedule-private" class="{{CSS_PREFIX}}button {{CSS_PREFIX}}section-private{{#unless isPrivate}} {{CSS_PREFIX}}public{{/unless}}">
+            <button id="{{CSS_PREFIX}}schedule-private" class="{{CSS_PREFIX}}button {{CSS_PREFIX}}section-private{{#unless isPrivate}} {{CSS_PREFIX}}public{{/unless}}" placeholder="Toggle public/private">
             <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-private"></span>
             </button>
         </div>

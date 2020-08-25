@@ -120,7 +120,7 @@ Drag.prototype._getEventData = function(mouseEvent) {
  */
 Drag.prototype._onMouseDown = function(mouseDownEvent) {
     var opt = this.options,
-        target = (mouseDownEvent.srcElement || mouseDownEvent.target);
+        target = (mouseDownEvent.srcElement || mouseDownEvent.target),
 
     // only primary button can start drag.
     if (domevent.getMouseButton(mouseDownEvent) !== 0) {

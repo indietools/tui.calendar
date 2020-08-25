@@ -1,5 +1,5 @@
 /**
- * @fileoverview Floating layer for writing new teams
+ * @fileoverview Floating layer for new teams
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  */
 'use strict';
@@ -12,7 +12,7 @@ var domevent = require('../../common/domevent');
 var domutil = require('../../common/domutil');
 var colorutil = require('../../common/colorutil');
 var common = require('../../common/common');
-var tmpl = require('../template/popup/resourceCreationPopup.hbs');
+var tmpl = require('../template/popup/teamCreationPopup.hbs');
 var MAX_WEEK_OF_MONTH = 6;
 var ARROW_WIDTH_HALF = 8;
 
@@ -25,7 +25,7 @@ var ARROW_WIDTH_HALF = 8;
  * @param {Array.<Resource>} resources - resource list used when creating new calendar
  * @param {boolean} usageStatistics - GA tracking options in Team
  */
-function ResourceCreationPopup(container, calendars, teams, resources, usageStatistics) {
+function TeamCreationPopup(container, calendars, teams, resources, usageStatistics) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -38,12 +38,10 @@ function ResourceCreationPopup(container, calendars, teams, resources, usageStat
      */
     this._viewModel = null;
     this._selectedCal = null;
-    this._selectedTeams = [];
-    this._resource = null;
+    this._team = null;
     this.calendars = calendars;
     this.teams = teams;
     this.resources = resources;
-    this._focusedSelect = null;
     this._focusedDropdown = null;
     this._usageStatistics = usageStatistics;
     this._onClickListeners = [
@@ -51,25 +49,21 @@ function ResourceCreationPopup(container, calendars, teams, resources, usageStat
         this._selectDropdownMenuItem.bind(this),
         this._toggleDropdownMenuView.bind(this),
         this._closeDropdownMenuView.bind(this, null),
-        this._selectSelectMenuItem.bind(this),
-        this._toggleSelectMenuView.bind(this),
-        this._closeSelectMenuView.bind(this, null),
         this._closePopup.bind(this),
-        this._toggleIsPerson.bind(this),
-        this._onClickSaveResource.bind(this)
+        this._onClickSaveTeam.bind(this)
     ];
 
     domevent.on(container, 'click', this._onClick, this);
 }
 
-util.inherit(ResourceCreationPopup, View);
+util.inherit(TeamCreationPopup, View);
 
 /**
  * Mousedown event handler for hiding popup layer when user mousedown outside of
  * layer
  * @param {MouseEvent} mouseDownEvent - mouse event object
  */
-ResourceCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
+TeamCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
     var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
         popupLayer = domutil.closest(target, config.classname('.floating-layer'));
 
@@ -83,7 +77,7 @@ ResourceCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
 /**
  * @override
  */
-ResourceCreationPopup.prototype.destroy = function() {
+TeamCreationPopup.prototype.destroy = function() {
     this.layer.destroy();
     this.layer = null;
     domevent.off(this.container, 'click', this._onClick, this);
@@ -96,7 +90,7 @@ ResourceCreationPopup.prototype.destroy = function() {
  * Click event handler for close button
  * @param {MouseEvent} clickEvent - mouse event object
  */
-ResourceCreationPopup.prototype._onClick = function(clickEvent) {
+TeamCreationPopup.prototype._onClick = function(clickEvent) {
     var target = (clickEvent.target || clickEvent.srcElement);
 
     util.forEach(this._onClickListeners, function(listener) {
@@ -109,7 +103,7 @@ ResourceCreationPopup.prototype._onClick = function(clickEvent) {
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether popup layer is closed or not
  */
-ResourceCreationPopup.prototype._closePopup = function(target) {
+TeamCreationPopup.prototype._closePopup = function(target) {
     var className = config.classname('popup-close');
 
     if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
@@ -126,8 +120,8 @@ ResourceCreationPopup.prototype._closePopup = function(target) {
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether user clicked dropdown button or not
  */
-ResourceCreationPopup.prototype._toggleDropdownMenuView = function(target) {
-    var className = config.classname('resource-color-dropdown-button');
+TeamCreationPopup.prototype._toggleDropdownMenuView = function(target) {
+    var className = config.classname('team-color-dropdown-button');
     var dropdownBtn = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
 
     if (!dropdownBtn) {
@@ -147,7 +141,7 @@ ResourceCreationPopup.prototype._toggleDropdownMenuView = function(target) {
  * Close drop down menu
  * @param {HTMLElement} dropdown - dropdown element that has a opened dropdown menu
  */
-ResourceCreationPopup.prototype._closeDropdownMenuView = function(dropdown) {
+TeamCreationPopup.prototype._closeDropdownMenuView = function(dropdown) {
     dropdown = dropdown || this._focusedDropdown;
     if (dropdown) {
         domutil.removeClass(dropdown, config.classname('open'));
@@ -159,7 +153,7 @@ ResourceCreationPopup.prototype._closeDropdownMenuView = function(dropdown) {
  * Open drop down menu
  * @param {HTMLElement} dropdown - dropdown element that has a closed dropdown menu
  */
-ResourceCreationPopup.prototype._openDropdownMenuView = function(dropdown) {
+TeamCreationPopup.prototype._openDropdownMenuView = function(dropdown) {
     domutil.addClass(dropdown, config.classname('open'));
     this._focusedDropdown = dropdown;
 };
@@ -169,8 +163,8 @@ ResourceCreationPopup.prototype._openDropdownMenuView = function(dropdown) {
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether
  */
-ResourceCreationPopup.prototype._selectDropdownMenuColorPickerItem = function(target) {
-    var itemClassName = config.classname('resource-color-dropdown-menu-color-picker-item');
+TeamCreationPopup.prototype._selectDropdownMenuColorPickerItem = function(target) {
+    var itemClassName = config.classname('team-color-dropdown-menu-color-picker-item');
     var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
 
     if (!selectedItem) {
@@ -185,8 +179,8 @@ ResourceCreationPopup.prototype._selectDropdownMenuColorPickerItem = function(ta
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether
  */
-ResourceCreationPopup.prototype._selectDropdownMenuItem = function(target) {
-    var itemClassName = config.classname('resource-color-dropdown-menu-item');
+TeamCreationPopup.prototype._selectDropdownMenuItem = function(target) {
+    var itemClassName = config.classname('team-color-dropdown-menu-item');
     var iconClassName = config.classname('icon');
     var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
     var bgColor, dropdown, dropdownBtn;
@@ -210,131 +204,23 @@ ResourceCreationPopup.prototype._selectDropdownMenuItem = function(target) {
 };
 
 /**
- * Toggle select menu view, when user clicks select button
- * @param {HTMLElement} target click event target
- * @returns {boolean} whether user clicked select button or not
- */
-ResourceCreationPopup.prototype._toggleSelectMenuView = function(target) {
-    var className = config.classname('select-button');
-    var selectBtn = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
-
-    if (!selectBtn) {
-        return false;
-    }
-
-    if (domutil.hasClass(selectBtn.parentNode, config.classname('open'))) {
-        this._closeSelectMenuView(selectBtn.parentNode);
-    } else {
-        this._openSelectMenuView(selectBtn.parentNode);
-    }
-
-    return true;
-};
-
-/**
- * Close select menu
- * @param {HTMLElement} select - select element that has a opened select menu
- */
-ResourceCreationPopup.prototype._closeSelectMenuView = function(select) {
-    select = select || this._focusedSelect;
-    if (select) {
-        domutil.removeClass(select, config.classname('open'));
-        this._focusedSelect = null;
-    }
-};
-
-/**
- * Open selectn menu
- * @param {HTMLElement} select - select element that has a closed select menu
- */
-ResourceCreationPopup.prototype._openSelectMenuView = function(select) {
-    domutil.addClass(select, config.classname('open'));
-    this._focusedSelect = select;
-};
-
-/**
- * If click select menu item, close select menu
- * @param {HTMLElement} target click event target
- * @returns {boolean} whether
- */
-ResourceCreationPopup.prototype._selectSelectMenuItem = function(target) {
-    var itemClassName = config.classname('select-menu-item');
-    var selectedClassName = config.classname('select-menu-item-selected');
-    var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
-    var select, add, cSpan;
-
-    if (!selectedItem) {
-        return false;
-    }
-
-    if (domutil.hasClass(selectedItem, selectedClassName)) {
-        domutil.removeClass(selectedItem, selectedClassName);
-        add = false;
-    } else {
-        domutil.addClass(selectedItem, selectedClassName);
-        add = true;
-    }
-
-    select = domutil.closest(selectedItem, config.classname('.select'));
-
-    if (domutil.hasClass(select, config.classname('section-team'))) {
-        if (add) {
-            this._selectedTeams = this._selectedTeams.concat(
-                this.teams.filter(function(team) {
-                    return team.id === domutil.getData(selectedItem, 'teamId');
-                })
-            );
-        } else {
-            this._selectedTeams = this._selectedTeams.filter(function(team) {
-                return team.id !== domutil.getData(selectedItem, 'teamId');
-            });
-        }
-    }
-
-    cSpan = document.getElementById('countSpan');
-    cSpan.innerText = '(' + this._selectedTeams.length.toString() + ')';
-
-    return true;
-};
-
-/**
- * Toggle isperson checkbox state
- * @param {HTMLElement} target click event target
- * @returns {boolean} whether event target is isperson section or not
- */
-ResourceCreationPopup.prototype._toggleIsPerson = function(target) {
-    var className = config.classname('section-isperson');
-    var personSection = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
-    var checkbox;
-
-    if (personSection) {
-        checkbox = domutil.find(config.classname('.checkbox-square'), personSection);
-        checkbox.checked = !checkbox.checked;
-
-        return true;
-    }
-
-    return false;
-};
-
-/**
- * Save new resource if user clicked save button
- * @emits ResourceCreationPopup#saveResource
+ * Save new team if user clicked save button
+ * @emits TeamCreationPopup#saveTeam
  * @param {HTMLElement} target click event target
  * @returns {boolean} whether save button is clicked or not
  */
-ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
-    var className = config.classname('resource-popup-save');
+TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
+    var className = config.classname('team-popup-save');
     var cssPrefix = config.cssPrefix;
-    var name, bgColor, isPerson, assignees, teams, changes;
+    var name, bgColor, resources, resourcesArray, changes;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
     }
 
-    name = domutil.get(cssPrefix + 'resource-name');
-    bgColor = domutil.get(cssPrefix + 'resource-creation-selected-color');
-    isPerson = !!domutil.get(cssPrefix + 'resource-isperson').checked;
+    name = domutil.get(cssPrefix + 'team-name');
+    bgColor = domutil.get(cssPrefix + 'team-creation-selected-color');
+    resources = domutil.get(cssPrefix + 'team-creation-resources-input');
 
     if (!name.value) {
         name.focus();
@@ -354,48 +240,40 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
         colorutil.rgb2Hex(bgColor.style.backgroundColor) :
         bgColor.style.backgroundColor);
 
-    assignees = domutil.get(cssPrefix + 'resource-creation-assignees-input');
-
-    teams = Array.from(document.querySelectorAll('.tui-full-calendar-select-menu > .tui-full-calendar-select-menu-item-selected')).map(function(item) {
-        return item.dataset.teamId;
-    });
+    resourcesArray = resources.value.split(',') || [];
 
     if (this._isEditMode) {
-        changes = common.getResourceChanges(
-            this._resource,
-            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'isPerson', 'assignees', 'teams', 'checked'],
+        changes = common.getTeamChanges(
+            this._team,
+            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'resources', 'checked'],
             {
                 name: name.value,
                 bgColor: bgColor.value,
-                color: colorutil.determineTextforBackground(bgColor.style.backgroundColor),
+                color: colorutil.determineTextforBackground(bgColor.value),
                 dragBgColor: bgColor.value,
                 borderColor: bgColor.value,
-                isPerson: isPerson,
-                assignees: assignees.value.split(',') || [],
-                teams: teams,
+                resources: resourcesArray,
                 checked: true
             }
         );
 
-        this.fire('beforeUpdateResource', {
-            resource: this._resource,
+        this.fire('beforeUpdateTeam', {
+            team: this._team,
             changes: changes
         });
     } else {
         /**
-         * @event ResourceCreationPopup#beforeCreateResource
+         * @event TeamCreationPopup#beforeCreateTeam
          * @type {object}
-         * @property {Resource} resource - new resource instance to be added
+         * @property {Team} team - new team instance to be added
          */
-        this.fire('beforeCreateResource', {
+        this.fire('beforeCreateTeam', {
             name: name.value,
             bgColor: bgColor.value,
             color: colorutil.determineTextforBackground(bgColor.value),
             dragBgColor: bgColor.value,
             borderColor: bgColor.value,
-            isPerson: isPerson,
-            assignees: assignees,
-            teams: teams,
+            resources: resourcesArray,
             checked: true
         });
     }
@@ -409,21 +287,15 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
  * @override
  * @param {object} viewModel - view model from factory/monthView
  */
-ResourceCreationPopup.prototype.render = function(viewModel) {
+TeamCreationPopup.prototype.render = function(viewModel) {
     var calendars = this.calendars;
-    var assignees = []; // this.resources.filter(function(res) {
-    //      return viewModel.resource.assignees.includes(res.id);
-    //  }) || [];
-    var teams = this.teams;
     var layer = this.layer;
     var self = this;
     var boxElement, guideElements;
 
     viewModel.zIndex = this.layer.zIndex + 5;
     viewModel.calendars = calendars;
-    viewModel.teams = teams;
-    assignees = viewModel.assignees;
-    this._isEditMode = viewModel.resource;
+    this._isEditMode = viewModel.team;
 
     if (viewModel.trigger) {
         boxElement = viewModel.trigger;
@@ -435,25 +307,12 @@ ResourceCreationPopup.prototype.render = function(viewModel) {
 
     this._selectedCal = calendars[0];
     if (this._isEditMode) {
-        this._resource = viewModel.resource;
-        this._selectedTeams = this.teams.filter(function(team) {
-            return viewModel.resource.teams.includes(team.id);
-        }) || [];
-        viewModel.selectedIds = viewModel.resource.teams || [];
-        viewModel.resource.bgColor = viewModel.resource.bgColor ?
-            viewModel.resource.bgColor : colorutil.randomColor('');
-        viewModel.recColors = this.findRecommendedColors(
-            this._selectedCal.bgColor).concat([viewModel.resource.bgColor]);
-        viewModel.isPerson = (viewModel.resource.isPerson === false ?
-            viewModel.resource.isPerson : true);
-        viewModel.bgColor = viewModel.resource.bgColor;
-        viewModel.name = viewModel.resource.name;
+        this._team = viewModel.team;
+        viewModel.recColors = this.findRecommendedColors(this._selectedCal.bgColor).concat([viewModel.team.bgColor]);
+        viewModel.bgColor = viewModel.team.bgColor;
+        viewModel.name = viewModel.team.name;
     } else {
-        viewModel.selectedIds = [];
-        this._selectedTeams = [];
         viewModel.recColors = this.findRecommendedColors(this._selectedCal.bgColor);
-        viewModel.isPerson = (viewModel.isPerson === false ?
-            viewModel.isPerson : true);
         viewModel.bgColor = viewModel.recColors[0];
     }
 
@@ -468,9 +327,9 @@ ResourceCreationPopup.prototype.render = function(viewModel) {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
     })();
 
-    this.fire('afterDisplayResourceEditWindow', {
-        resource: this._resource,
-        assignees: assignees
+    this.fire('afterDisplayTeamEditWindow', {
+        team: this._team,
+        resources: viewModel.resources
     });
 };
 
@@ -478,7 +337,7 @@ ResourceCreationPopup.prototype.render = function(viewModel) {
  * Set popup position and arrow direction to apear near guide element
  * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
  */
-ResourceCreationPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+TeamCreationPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
     var layer = domutil.find(config.classname('.popup'), this.layer.container);
     var layerSize = {
         width: layer.offsetWidth,
@@ -509,7 +368,7 @@ ResourceCreationPopup.prototype._setPopupPositionAndArrowDirection = function(gu
  * @param {MonthCreationGuide|TimeCreationGuide|AlldayCreationGuide} guide - creation guide
  * @returns {Array.<HTMLElement>} creation guide element
  */
-ResourceCreationPopup.prototype._getGuideElements = function(guide) {
+TeamCreationPopup.prototype._getGuideElements = function(guide) {
     var guideElements = [];
     var i = 0;
 
@@ -531,7 +390,7 @@ ResourceCreationPopup.prototype._getGuideElements = function(guide) {
  * @param {Array.<HTMLElement>} guideElements - creation guide elements
  * @returns {Object} - popup bound data
  */
-ResourceCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guideElements) {
+TeamCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guideElements) {
     var bound;
 
     if (!guideElements.length) {
@@ -555,7 +414,7 @@ ResourceCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guide
  * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
  * @returns {PopupRenderingData} rendering position of popup and popup arrow
  */
-ResourceCreationPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+TeamCreationPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
     var guideHorizontalCenter = (guideBound.left + guideBound.right) / 2;
     var x = guideHorizontalCenter - (layerSize.width / 2);
     var y = guideBound.top - layerSize.height + 3;
@@ -600,7 +459,7 @@ ResourceCreationPopup.prototype._calcRenderingData = function(layerSize, parentS
  * Set arrow's direction and position
  * @param {Object} arrow rendering data for popup arrow
  */
-ResourceCreationPopup.prototype._setArrowDirection = function(arrow) {
+TeamCreationPopup.prototype._setArrowDirection = function(arrow) {
     var direction = arrow.direction || 'arrow-bottom';
     var arrowEl = domutil.get(config.classname('popup-arrow'));
     var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
@@ -618,7 +477,7 @@ ResourceCreationPopup.prototype._setArrowDirection = function(arrow) {
 /**
  * Hide layer
  */
-ResourceCreationPopup.prototype.hide = function() {
+TeamCreationPopup.prototype.hide = function() {
     this.layer.hide();
 
     if (this.guide) {
@@ -632,7 +491,7 @@ ResourceCreationPopup.prototype.hide = function() {
 /**
  * refresh layer
  */
-ResourceCreationPopup.prototype.refresh = function() {
+TeamCreationPopup.prototype.refresh = function() {
     if (this._viewModel) {
         this.layer.setContent(this.tmpl(this._viewModel));
     }
@@ -642,7 +501,7 @@ ResourceCreationPopup.prototype.refresh = function() {
  * Set team list
  * @param {Array.<Team>} teams - team list
  */
-ResourceCreationPopup.prototype.setTeams = function(teams) {
+TeamCreationPopup.prototype.setTeams = function(teams) {
     this.teams = teams || [];
 };
 
@@ -650,7 +509,7 @@ ResourceCreationPopup.prototype.setTeams = function(teams) {
  * Set resource list
  * @param {Array.<Resource>} resources - resource list
  */
-ResourceCreationPopup.prototype.setResources = function(resources) {
+TeamCreationPopup.prototype.setResources = function(resources) {
     this.resources = resources || [];
 };
 
@@ -659,7 +518,7 @@ ResourceCreationPopup.prototype.setResources = function(resources) {
  * @param {String} color - 7 char hex string representing color
  * @returns {array} - array of potential colors
  */
-ResourceCreationPopup.prototype.findRecommendedColors = function(color) {
+TeamCreationPopup.prototype.findRecommendedColors = function(color) {
     var totalResources = this.resources.concat(this.teams);
     var totalResourcesColors = [];
     totalResources.forEach(function(res) {
@@ -669,4 +528,4 @@ ResourceCreationPopup.prototype.findRecommendedColors = function(color) {
     return colorutil.getRecommendedColors(color, totalResourcesColors);
 };
 
-module.exports = ResourceCreationPopup;
+module.exports = TeamCreationPopup;

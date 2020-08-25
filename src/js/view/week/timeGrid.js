@@ -245,7 +245,7 @@ TimeGrid.prototype._getTopPercentByTime = function(time) {
 TimeGrid.prototype._getHourmarkerViewModel = function(now, grids, range) {
     var todaymarkerLeft = -1;
     var todaymarkerWidth = -1;
-    var hourmarkerTimzones = [];
+    var hourmarkerTimezones = [];
     var opt = this.options;
     var primaryOffset = Timezone.getOffset();
     var timezones = opt.timezones;
@@ -266,7 +266,7 @@ TimeGrid.prototype._getHourmarkerViewModel = function(now, grids, range) {
         hourmarker.setMinutes(hourmarker.getMinutes() + timezoneDifference);
         dateDifference = datetime.getDateDifference(hourmarker, now);
 
-        hourmarkerTimzones.push({
+        hourmarkerTimezones.push({
             hourmarker: hourmarker,
             dateDifferenceSign: (dateDifference < 0) ? '-' : '+',
             dateDifference: Math.abs(dateDifference)
@@ -276,7 +276,7 @@ TimeGrid.prototype._getHourmarkerViewModel = function(now, grids, range) {
     viewModel = {
         currentHours: now.getHours(),
         hourmarkerTop: this._getTopPercentByTime(now),
-        hourmarkerTimzones: hourmarkerTimzones,
+        hourmarkerTimezones: hourmarkerTimezones,
         todaymarkerLeft: todaymarkerLeft,
         todaymarkerWidth: todaymarkerWidth,
         todaymarkerRight: todaymarkerLeft + todaymarkerWidth
@@ -510,7 +510,11 @@ TimeGrid.prototype.refreshHourmarker = function() {
                 var todaymarker = domutil.find(config.classname('.timegrid-todaymarker'), hourmarker);
                 var hourmarkerContainer = domutil.find(config.classname('.timegrid-hourmarker-time'), hourmarker);
                 var timezone = domutil.closest(hourmarker, config.classname('.timegrid-timezone'));
-                var timezoneIndex = timezone ? domutil.getData(timezone, 'timezoneIndex') : 0;
+                var timezoneIndex = (timezone &&
+                    domutil.getData(timezone, 'timezoneIndex') !== '') ?
+                    domutil.getData(timezone, 'timezoneIndex') : 0;
+                // TODO: @index in handlebars is breaking so data-timezone-index
+                //    isn't getting a value.  Multiple TZs will rebreak this.
 
                 hourmarker.style.top = baseViewModel.hourmarkerTop + '%';
 
@@ -519,7 +523,7 @@ TimeGrid.prototype.refreshHourmarker = function() {
                 }
                 if (hourmarkerContainer) {
                     hourmarkerContainer.innerHTML = timegridCurrentTimeTmpl(
-                        baseViewModel.hourmarkerTimzones[timezoneIndex]
+                        baseViewModel.hourmarkerTimezones[timezoneIndex]
                     );
                 }
             });

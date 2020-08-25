@@ -20,9 +20,9 @@
                     margin-right: {{@root.styles.marginRight}};
                 {{/unless}}
                 {{#if model.isFocused}}
-                    color: #ffffff; background-color:{{model.color}}; border-color:{{model.color}};
+                    color: #ffffff; background:{{model.color}}; border-color:{{model.color}};
                 {{else}}
-                    color:{{model.color}}; background-color:{{model.bgColor}}; border-color:{{model.borderColor}};
+                    color:{{model.color}}; background:{{model.bgColor}}; border-color:{{model.borderColor}};
                 {{/if}}
                     {{model.customStyle}}">
             <span class="{{CSS_PREFIX}}weekday-schedule-title"
@@ -46,7 +46,7 @@
                         style="
                             {{#if model.isFocused}}
                                 color: #ffffff;
-                                background-color: {{model.color}}
+                                background: {{model.color}}
                             {{else}}
                                 color:#333;
                             {{/if}}
@@ -63,9 +63,9 @@
                         margin-right: {{@root.styles.marginRight}};
                     {{/unless}}
                     {{#if model.isFocused}}
-                        color: #ffffff; background-color:{{model.color}}; border-color:{{model.color}};
+                        color: #ffffff; background:{{model.color}}; border-color:{{model.color}};
                     {{else}}
-                        color:{{model.color}}; background-color:{{model.bgColor}}; border-color:{{model.borderColor}};
+                        color:{{model.color}}; background:{{model.bgColor}}; border-color:{{model.borderColor}};
                     {{/if}}
                         {{model.customStyle}}">
                     <span class="{{CSS_PREFIX}}weekday-schedule-title"

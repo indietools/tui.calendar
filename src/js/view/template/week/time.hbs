@@ -20,9 +20,9 @@
                     border-top-right-radius: {{@root.styles.borderRadius}};
                 {{/unless}}
                 {{#if model.isFocused}}
-                    color: #ffffff; background-color:{{model.color}}; border-color:{{model.color}};
+                    color: #ffffff; background:{{model.color}}; border-color:{{model.color}};
                 {{else}}
-                    color:{{model.color}}; background-color:{{model.bgColor}}; border-color:{{model.borderColor}};
+                    color:{{model.color}}; background:{{model.bgColor}}; border-color:{{model.borderColor}};
                 {{/if}}
                  {{model.customStyle}}"
             >

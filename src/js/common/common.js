@@ -53,7 +53,35 @@ module.exports = {
      * @param {...*} initItems - items to add newly created collection.
      * @returns {Collection} new collection for schedule models.
      */
+    createTeamCollection: function(initItems) {    // eslint-disable-line
+        var collection = new Collection(scheduleIDGetter);
+
+        if (arguments.length) {
+            collection.add.apply(collection, arguments);
+        }
+
+        return collection;
+    },
+
+    /**
+     * @param {...*} initItems - items to add newly created collection.
+     * @returns {Collection} new collection for schedule models.
+     */
     createResourceCollection: function(initItems) {    // eslint-disable-line
+        var collection = new Collection(scheduleIDGetter);
+
+        if (arguments.length) {
+            collection.add.apply(collection, arguments);
+        }
+
+        return collection;
+    },
+
+    /**
+     * @param {...*} initItems - items to add newly created collection.
+     * @returns {Collection} new collection for schedule models.
+     */
+    createUserCollection: function(initItems) {    // eslint-disable-line
         var collection = new Collection(scheduleIDGetter);
 
         if (arguments.length) {
@@ -380,11 +408,37 @@ module.exports = {
         return util.isEmpty(changes) ? null : changes;
     },
 
+    getTeamChanges: function(team, propNames, data) {
+        var changes = {};
+
+        util.forEach(propNames, function(propName) {
+            if (data[propName] && team[propName] !== data[propName]) {
+                changes[propName] = data[propName];
+            }
+        });
+
+        return util.isEmpty(changes) ? null : changes;
+    },
+
     getResourceChanges: function(resource, propNames, data) {
         var changes = {};
 
         util.forEach(propNames, function(propName) {
-            if (data[propName] && resource[propName] !== data[propName]) {
+            // TODO: Should I use a string representation of the boolean?
+            if (propName in data && resource[propName] !== data[propName]) {
+                changes[propName] = data[propName];
+            }
+        });
+
+        return util.isEmpty(changes) ? null : changes;
+    },
+
+    getUserChanges: function(user, propNames, data) {
+        var changes = {};
+
+        util.forEach(propNames, function(propName) {
+            // TODO: Should I use a string representation of the boolean?
+            if (propName in data && user[propName] !== data[propName]) {
                 changes[propName] = data[propName];
             }
         });

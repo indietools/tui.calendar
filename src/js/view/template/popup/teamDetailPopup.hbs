@@ -2,7 +2,7 @@
   <div class="{{CSS_PREFIX}}popup-container">
     <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}section-header">
       <div>
-        <span class="{{CSS_PREFIX}}schedule-title">{{calendar.name}}</span>
+        <span class="{{CSS_PREFIX}}schedule-title">{{team.name}}</span>
       </div>
     </div>
     <div class="{{CSS_PREFIX}}section-detail">
@@ -11,12 +11,12 @@
         {{/each}}
     </div>
     <div class="{{CSS_PREFIX}}section-button">
-      <button class="{{CSS_PREFIX}}popup-edit-calendar"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-edit"></span><span class="{{CSS_PREFIX}}content">{{{popupEdit-tmpl}}}</span></button>
+      <button class="{{CSS_PREFIX}}popup-edit-team"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-edit"></span><span class="{{CSS_PREFIX}}content">{{{popupEdit-tmpl}}}</span></button>
       <div class="{{CSS_PREFIX}}popup-vertical-line"></div>
-      <button class="{{CSS_PREFIX}}popup-delete-calendar"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-trash"></span><span class="{{CSS_PREFIX}}content">{{{popupDelete-tmpl}}}</span></button>
+      <button class="{{CSS_PREFIX}}popup-delete-team"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-trash"></span><span class="{{CSS_PREFIX}}content">{{{popupDelete-tmpl}}}</span></button>
     </div>
   </div>
-  <div class="{{CSS_PREFIX}}popup-top-line" style="background-color: {{calendar.bgColor}}"></div>
+  <div class="{{CSS_PREFIX}}popup-top-line" style="background-color: {{team.bgColor}}"></div>
   <div id="{{CSS_PREFIX}}popup-arrow" class="{{CSS_PREFIX}}popup-arrow {{CSS_PREFIX}}arrow-left">
     <div class="{{CSS_PREFIX}}popup-arrow-border">
         <div class="{{CSS_PREFIX}}popup-arrow-fill"></div>

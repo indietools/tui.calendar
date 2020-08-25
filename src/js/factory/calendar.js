@@ -553,8 +553,10 @@ function Calendar(container, options) {
      * @private
      */
     this._controller = _createController(options);
+    this._controller.setTeams(options.teams);
     this._controller.setCalendars(options.calendars);
     this._controller.setResources(options.resources);
+    this._controller.setUsers(options.users);
 
     /**
      * layout view (layout manager)
@@ -605,6 +607,20 @@ function Calendar(container, options) {
      * @private
      */
     this._openCreationPopup = null;
+
+    /**
+     * Open project creation (edit) popup
+     * @type {function}
+     * @private
+     */
+    this._openProjectCreationPopup = null;
+
+    /**
+     * Open team creation popup
+     * @type {function}
+     * @private
+     */
+    this._openTeamCreationPopup = null;
 
     /**
      * Open calendar creation popup
@@ -839,6 +855,34 @@ Calendar.prototype.updateSchedule = function(scheduleId, calendarId, changes, si
 };
 
 /**
+ * Update the team
+ * @param {string} teamId - ID of the original team to update
+ * @param {object} changes - The {@link Team} properties and values with changes to update
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ * @example
+ * calendar.updateTeam(team.id, {
+ *     title: 'Changed team',
+ * });
+ */
+Calendar.prototype.updateTeam = function(teamId, changes, silent) {
+    var ctrl = this._controller,
+        ownTeams = ctrl.teams,
+        team = ownTeams.filter(function(model) {
+            return model.id === teamId;
+        })[0];
+
+    if (!changes || !team) {
+        return;
+    }
+
+    ctrl.updateTeam(team, changes);
+
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
  * Update the calendar
  * @param {string} calendarId - ID of the original calendar to update
  * @param {object} changes - The {@link Calendar} properties and values with changes to update
@@ -894,6 +938,34 @@ Calendar.prototype.updateResource = function(resourceId, changes, silent) {
     }
 };
 
+/**
+ * Update the user
+ * @param {string} userId - ID of the original user to update
+ * @param {object} changes - The {@link User} properties and values with changes to update
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ * @example
+ * calendar.updateUser(user.id, {
+ *     title: 'Changed user',
+ * });
+ */
+Calendar.prototype.updateUser = function(userId, changes, silent) {
+    var ctrl = this._controller,
+        ownUsers = ctrl.users,
+        user = ownUsers.filter(function(model) {
+            return model.id === userId;
+        })[0];
+
+    if (!changes || !user) {
+        return;
+    }
+
+    ctrl.updateUser(user, changes);
+
+    if (!silent) {
+        this.render();
+    }
+};
+
 Calendar.prototype._hasChangedCalendar = function(schedule, changes) {
     return schedule &&
         changes.calendarId &&
@@ -938,6 +1010,28 @@ Calendar.prototype.deleteSchedule = function(scheduleId, calendarId, silent) {
 };
 
 /**
+ * Delete a team.
+ * @param {string} teamId - ID of team to delete
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ */
+Calendar.prototype.deleteTeam = function(teamId, silent) {
+    var ctrl = this._controller,
+        ownTeams = ctrl.teams,
+        team = ownTeams.find(function(model) {
+            return model.id === teamId;
+        });
+
+    if (!team) {
+        return;
+    }
+
+    ctrl.deleteTeam(team);
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
  * Delete a calendar.
  * @param {string} calendarId - ID of calendar to delete
  * @param {boolean} [silent=false] - No auto render after creation when set true
@@ -976,6 +1070,28 @@ Calendar.prototype.deleteResource = function(resourceId, silent) {
     }
 
     ctrl.deleteResource(resource);
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
+ * Delete a user.
+ * @param {string} userId - ID of user to delete
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ */
+Calendar.prototype.deleteUser = function(userId, silent) {
+    var ctrl = this._controller,
+        ownUsers = ctrl.users,
+        user = ownUsers.find(function(model) {
+            return model.id === userId;
+        });
+
+    if (!user) {
+        return;
+    }
+
+    ctrl.deleteUser(user);
     if (!silent) {
         this.render();
     }
@@ -1445,6 +1561,39 @@ Calendar.prototype._onCalendarClick = function(clickCalendarData) {
 
 /**
  * A bridge-based event handler for connecting a click handler to a user click event handler for each view
+ * @fires Calendar#clickTeam
+ * @param {object} clickTeamData - The event data of 'clickTeam' handler
+ * @private
+ */
+Calendar.prototype._onTeamClick = function(clickTeamData) {
+    /**
+     * Fire this event when click a team.
+     * @event Calendar#clickTeam
+     * @type {object}
+     * @property {Team} team - The {@link Team} instance
+     * @property {MouseEvent} event - MouseEvent
+     * @example
+     * calendar.on('clickTeam', function(event) {
+     *     var team = event.team;
+     *
+     *     if (lastClickTeam) {
+     *         calendar.updateTeam(lastClickTeam.id, lastClickTeam.calendarId, {
+     *             isFocused: false
+     *         });
+     *     }
+     *     calendar.updateTeam(team.id, team.calendarId, {
+     *         isFocused: true
+     *     });
+     *
+     *     lastClickTeam = team;
+     *     // open detail view
+     * });
+     */
+    this.fire('clickTeam', clickTeamData);
+};
+
+/**
+ * A bridge-based event handler for connecting a click handler to a user click event handler for each view
  * @fires Calendar#clickResource
  * @param {object} clickResourceData - The event data of 'clickResource' handler
  * @private
@@ -1521,7 +1670,51 @@ Calendar.prototype._onClickDayname = function(clickScheduleData) {
 };
 
 /**
- * @fires {Resource#n('beforeCreateResource', function}
+ * @fires {Team#('beforeCreateTeam', function}
+ * @param {object} createTeamData - select schedule data from allday, time
+ * @private
+ */
+Calendar.prototype._onBeforeTeamCreate = function(createTeamData) {
+    if (this._options.useCreationPopup && !createTeamData.useCreationPopup) {
+        if (this._showTeamCreationPopup) {
+            this._showTeamCreationPopup(createTeamData);
+
+            return;
+        }
+    }
+    /**
+     * Fire this event when select time period in daily, weekly, monthly.
+     * @event Team#beforeCreateTeam
+     * @type {object}
+     */
+    this.fire('beforeCreateTeam', createTeamData);
+};
+
+/**
+ * @fires Calendar#beforeUpdateTeam
+ * @param {object} updateTeamData - update {@link Team} data
+ * @private
+ */
+Calendar.prototype._onBeforeTeamUpdate = function(updateTeamData) {
+    /**
+     * Fire this event when we click on a team to change it.
+     * @event Team#beforeUpdateTeam
+     * @type {object}
+     * @property {Team} team - The original {@link Team} instance
+     * @property {object} changes - The {@link Team} properties and values with changes to update
+     * @example
+     * calendar.on('beforeUpdateTeam', function(event) {
+     *     var team = event.team;
+     *     var changes = event.changes;
+     *
+     *     team.updateTeam(team.id, changes);
+     * });
+     */
+    this.fire('beforeUpdateTeam', updateTeamData);
+};
+
+/**
+ * @fires {Resource#('beforeCreateResource', function}
  * @param {object} createResourceData - select schedule data from allday, time
  * @private
  */
@@ -1586,6 +1779,51 @@ Calendar.prototype._onBeforeCalendarCreate = function(createCalendarData) {
 };
 
 /**
+ * @fires Calendar#beforeUpdateProject
+ * @param {object} updateProjectData - update {@link Project} data
+ * @private
+ */
+Calendar.prototype._onBeforeProjectUpdate = function(updateProjectData) {
+    /**
+     * Fire this event when we click on a calendar to change it.
+     * @event Calendar#beforeUpdateProject
+     * @type {object}
+     * @property {Project} calendar - The original {@link Project} instance
+     * @property {object} changes - The {@link Project} properties and values with changes to update
+     * @example
+     * calendar.on('beforeUpdateProject', function(event) {
+     *     var calendar = event.calendar;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateProject(calendar.id, changes);
+     * });
+     */
+    this.fire('beforeUpdateProject', updateProjectData);
+};
+
+/**
+ * @fires Calendar#afterDisplayProjectEditWindow
+ * @param {object} updateProjectData - update {@link Project} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayProjectEditWindow = function(updateProjectData) {
+    /**
+     * Fire this event when we render our calendar creation popup.
+     * @event Calendar#afterDisplayProjectEditWindow
+     * @type {object}
+     * @property {Project} calendar - The original {@link Project} instance
+     * @example
+     * calendar.on('afterDisplayProjectEditWindow', function(event) {
+     *     var calendar = event.calendar;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateProject(calendar.id, changes);
+     * });
+     */
+    this.fire('afterDisplayProjectEditWindow', updateProjectData);
+};
+
+/**
  * @fires Calendar#beforeUpdateCalendar
  * @param {object} updateCalendarData - update {@link Calendar} data
  * @private
@@ -1606,6 +1844,72 @@ Calendar.prototype._onBeforeCalendarUpdate = function(updateCalendarData) {
      * });
      */
     this.fire('beforeUpdateCalendar', updateCalendarData);
+};
+
+/**
+ * @fires Calendar#beforeDisplayResourceEditWindow
+ * @param {object} updateResourceData - update {@link Resource} data
+ * @private
+ */
+Calendar.prototype._onBeforeDisplayResourceEditWindow = function(updateResourceData) {
+    /**
+     * Fire this event when we render our resource creation popup.
+     * @event Calendar#beforeDisplayResourceEditWindow
+     * @type {object}
+     * @property {Resource} resource - The original {@link Resource} instance
+     * @example
+     * calendar.on('beforeDisplayResourceEditWindow', function(event) {
+     *     var resource = event.resource;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateResource(resource.id, changes);
+     * });
+     */
+    this.fire('beforeDisplayResourceEditWindow', updateResourceData);
+};
+
+/**
+ * @fires Calendar#afterDisplayResourceEditWindow
+ * @param {object} updateResourceData - update {@link Resource} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayResourceEditWindow = function(updateResourceData) {
+    /**
+     * Fire this event when we render our resource creation popup.
+     * @event Calendar#afterDisplayResourceEditWindow
+     * @type {object}
+     * @property {Resource} resource - The original {@link Resource} instance
+     * @example
+     * calendar.on('afterDisplayResourceEditWindow', function(event) {
+     *     var resource = event.resource;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateResource(resource.id, changes);
+     * });
+     */
+    this.fire('afterDisplayResourceEditWindow', updateResourceData);
+};
+
+/**
+ * @fires Calendar#afterDisplayTeamEditWindow
+ * @param {object} updateTeamData - update {@link Team} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayTeamEditWindow = function(updateTeamData) {
+    /**
+     * Fire this event when we render our team creation popup.
+     * @event Calendar#afterDisplayTeamEditWindow
+     * @type {object}
+     * @property {Team} team - The original {@link Team} instance
+     * @example
+     * calendar.on('afterDisplayTeamEditWindow', function(event) {
+     *     var team = event.team;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateTeam(team.id, changes);
+     * });
+     */
+    this.fire('afterDisplayTeamEditWindow', updateTeamData);
 };
 
 /**
@@ -1753,6 +2057,26 @@ Calendar.prototype._onAfterUpdateScheduleCalendar = function(updateScheduleCalen
 };
 
 /**
+ * @fires Calendar#beforeDeleteTeam
+ * @param {object} deleteTeamData - delete team data
+ * @private
+ */
+Calendar.prototype._onBeforeTeamDelete = function(deleteTeamData) {
+    /**
+     * Fire this event when delete a team.
+     * @event Calendar#beforeDeleteTeam
+     * @type {object}
+     * @property {Team} team - The {@link Team} instance to delete
+     * @example
+     * calendar.on('beforeDeleteTeam', function(event) {
+     *     var team = event.team;
+     *     alert('The team is removed.', team);
+     * });
+     */
+    this.fire('beforeDeleteTeam', deleteTeamData);
+};
+
+/**
  * @fires Calendar#beforeDeleteResource
  * @param {object} deleteResourceData - delete resource data
  * @private
@@ -1867,6 +2191,7 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
     util.forEach(handler.click, function(clickHandler) {
         clickHandler[method]('clickSchedule', self._onClick, self);
         clickHandler[method]('clickCalendar', self._onCalendarClick, self);
+        clickHandler[method]('clickTeam', self._onTeamClick, self);
         clickHandler[method]('clickResource', self._onResourceClick, self);
     });
 
@@ -1875,8 +2200,15 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
     });
 
     util.forEach(handler.creation, function(creationHandler) {
+        creationHandler[method]('beforeUpdateProject', self._onBeforeProjectUpdate, self);
+        creationHandler[method]('beforeCreateTeam', self._onBeforeTeamCreate, self);
+        creationHandler[method]('beforeUpdateTeam', self._onBeforeTeamUpdate, self);
+        creationHandler[method]('afterDisplayTeamEditWindow', self._onAfterDisplayTeamEditWindow, self);
+        creationHandler[method]('beforeDeleteTeam', self._onBeforeTeamDelete, self);
         creationHandler[method]('beforeCreateResource', self._onBeforeResourceCreate, self);
         creationHandler[method]('beforeUpdateResource', self._onBeforeResourceUpdate, self);
+        creationHandler[method]('beforeDisplayResourceEditWindow', self._onBeforeDisplayResourceEditWindow, self);
+        creationHandler[method]('afterDisplayResourceEditWindow', self._onAfterDisplayResourceEditWindow, self);
         creationHandler[method]('beforeDeleteResource', self._onBeforeResourceDelete, self);
         creationHandler[method]('beforeCreateCalendar', self._onBeforeCalendarCreate, self);
         creationHandler[method]('beforeUpdateCalendar', self._onBeforeCalendarUpdate, self);
@@ -1996,12 +2328,16 @@ Calendar.prototype.changeView = function(newViewName, force) {
     this._refreshMethod = created.refresh;
     this._scrollToNowMethod = created.scrollToNow;
     this._openCreationPopup = created.openCreationPopup;
+    this._showProjectDetailPopup = created.showProjectDetailPopup;
     this._openCalendarCreationPopup = created.openCalendarCreationPopup;
     this._showCalendarDetailPopup = created.showCalendarDetailPopup;
+    this._openTeamCreationPopup = created.openTeamCreationPopup;
+    this._showTeamDetailPopup = created.showTeamDetailPopup;
     this._openResourceCreationPopup = created.openResourceCreationPopup;
     this._showResourceDetailPopup = created.showResourceDetailPopup;
     this._showCreationPopup = created.showCreationPopup;
     this._showCalendarCreationPopup = created.showCalendarCreationPopup;
+    this._showTeamCreationPopup = created.showTeamCreationPopup;
     this._showResourceCreationPopup = created.showResourceCreationPopup;
     this._hideMoreView = created.hideMoreView;
 
@@ -2158,6 +2494,14 @@ Calendar.prototype.getViewName = function() {
 };
 
 /**
+ * Set team list
+ * @param {Array.<TeamProps>} teams - {@link TeamProps} List
+ */
+Calendar.prototype.setTeams = function(teams) {
+    this._controller.setTeams(teams);
+};
+
+/**
  * Set calendar list
  * @param {Array.<CalendarProps>} calendars - {@link CalendarProps} List
  */
@@ -2177,6 +2521,44 @@ Calendar.prototype.setCalendars = function(calendars) {
  */
 Calendar.prototype.setResources = function(resources) {
     this._controller.setResources(resources);
+};
+
+/**
+ * Set user list
+ * @param {Array.<UserProps>} users - {@link UserProps} List
+ */
+Calendar.prototype.setUsers = function(users) {
+    this._controller.setUsers(users);
+};
+
+/**
+ * show project detail popup
+ * @param {event} eventData - The event data with project data
+ */
+Calendar.prototype.showProjectDetailPopup = function(eventData) {
+    if (this._showProjectDetailPopup) {
+        this._showProjectDetailPopup(eventData);
+    }
+};
+
+/**
+ * Open team creation popup
+ * @param {Team} team - The preset {@link Team} data
+ */
+Calendar.prototype.openTeamCreationPopup = function(team) {
+    if (this._openTeamCreationPopup) {
+        this._openTeamCreationPopup(team);
+    }
+};
+
+/**
+ * show team creation popup
+ * @param {event} eventData - The event data with teamId chosen in eventData.teamId
+ */
+Calendar.prototype.showTeamDetailPopup = function(eventData) {
+    if (this._showTeamDetailPopup) {
+        this._showTeamDetailPopup(eventData);
+    }
 };
 
 /**

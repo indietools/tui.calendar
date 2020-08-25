@@ -1,0 +1,26 @@
+<div class="{{CSS_PREFIX}}popup {{CSS_PREFIX}}popup-detail">
+  <div class="{{CSS_PREFIX}}popup-container">
+    <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}section-header">
+      <div>
+        <span class="{{CSS_PREFIX}}project-title">{{project.name}}</span>
+      </div>
+    </div>
+    <div class="{{CSS_PREFIX}}section-detail">
+      <div>
+        <span class="{{CSS_PREFIX}}project-description">{{project.description}}</span>
+      </div>
+      <div>
+        <span class="{{CSS_PREFIX}}project-range">{{project.start_date}} - {{project.end_date}}</span>
+      </div>
+    </div>
+    <div class="{{CSS_PREFIX}}section-button">
+      <button class="{{CSS_PREFIX}}popup-edit-project"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-edit"></span><span class="{{CSS_PREFIX}}content">{{{popupEdit-tmpl}}}</span></button>
+    </div>
+  </div>
+  <div class="{{CSS_PREFIX}}popup-top-line" style="background-color: {{project.bg_color}}"></div>
+  <div id="{{CSS_PREFIX}}popup-arrow" class="{{CSS_PREFIX}}popup-arrow {{CSS_PREFIX}}arrow-left">
+    <div class="{{CSS_PREFIX}}popup-arrow-border">
+        <div class="{{CSS_PREFIX}}popup-arrow-fill"></div>
+    </div>
+  </div>
+</div>

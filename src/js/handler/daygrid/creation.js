@@ -131,6 +131,24 @@ DayGridCreation.prototype.checkExpectedCondition = function(target) {
 };
 
 /**
+ * Request team model creation to controller by custom team.
+ * @fires {DayGridCreation#beforeCreateTeam}
+ * @param {object} teamData - team data from DayGridCreation module.
+ */
+DayGridCreation.prototype._createTeam = function(teamData) {
+    /**
+     * @event {DayGridCreation#beforeCreateTeam}
+     * @type {object}
+     * @property {DayGridCreationGuide} guide - DayGridCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var teamViewModelData = teamData;
+    teamViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateTeam', teamViewModelData);
+};
+
+/**
  * Request resource model creation to controller by custom resource.
  * @fires {DayGridCreation#beforeCreateResource}
  * @param {object} resourceData - resource data from DayGridCreation module.
@@ -360,6 +378,20 @@ DayGridCreation.prototype._onDblClick = function(clickEventData) {
     this._createSchedule(scheduleData);
 
     this._requestOnClick = false;
+};
+
+/**
+ * Invoke creation click
+ * @param {Team} team - team instance
+ */
+DayGridCreation.prototype.invokeTeamCreationClick = function(team) {
+    var teamData;
+
+    teamData = team;
+
+    // this.fire('click', teamData);
+
+    this._createTeam(teamData);
 };
 
 /**

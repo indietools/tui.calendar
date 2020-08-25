@@ -23,10 +23,10 @@ var ARROW_WIDTH_HALF = 8;
  * @extends {View}
  * @param {HTMLElement} container - container element
  * @param {Array.<Calendar>} calendars - calendar list used to create new schedule
- * @param {Array.<Resource>} attendees - attendee list used to create new schedule
+ * @param {Array.<Resource>} resources - resource list used to create new schedule
  * @param {boolean} usageStatistics - GA tracking options in Calendar
  */
-function ScheduleCreationPopup(container, calendars, attendees, usageStatistics) {
+function ScheduleCreationPopup(container, calendars, resources, usageStatistics) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -41,7 +41,7 @@ function ScheduleCreationPopup(container, calendars, attendees, usageStatistics)
     this._selectedCal = null;
     this._schedule = null;
     this.calendars = calendars;
-    this.resources = attendees;
+    this.resources = resources;
     this._focusedDropdown = null;
     this._usageStatistics = usageStatistics;
     this._onClickListeners = [
@@ -253,7 +253,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     var cssPrefix = config.cssPrefix;
     var title, isPrivate, location, isAllDay, startDate, endDate, state;
     var start, end, calendarId;
-    var changes, attendees, attendeesArray;
+    var changes, attendees;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
@@ -292,8 +292,6 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
         calendarId = this._selectedCal.id;
     }
 
-    attendeesArray = attendees.value.split(',') || [];
-
     if (this._isEditMode) {
         changes = common.getScheduleChanges(
             this._schedule,
@@ -305,7 +303,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
                 start: start,
                 end: end,
                 isAllDay: isAllDay,
-                attendees: attendeesArray,
+                attendees: attendees.value.split(',') || [],
                 state: state.innerText
             }
         );
@@ -338,7 +336,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
             start: start,
             end: end,
             isAllDay: isAllDay,
-            attendees: attendeesArray,
+            attendees: attendees.value.split(',') || [],
             state: state.innerText
         });
     }

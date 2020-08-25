@@ -1,5 +1,5 @@
 /**
- * @fileoverview Floating layer for  showing detail resource
+ * @fileoverview Floating layer for showing team details
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  */
 'use strict';
@@ -10,7 +10,7 @@ var util = require('tui-code-snippet');
 var config = require('../../config'),
     domevent = require('../../common/domevent'),
     domutil = require('../../common/domutil');
-var tmpl = require('../template/popup/resourceDetailPopup.hbs');
+var tmpl = require('../template/popup/teamDetailPopup.hbs');
 var ARROW_WIDTH_HALF = 8;
 
 /**
@@ -18,7 +18,7 @@ var ARROW_WIDTH_HALF = 8;
  * @extends {View}
  * @param {HTMLElement} container - container element
  */
-function ResourceDetailPopup(container) {
+function TeamDetailPopup(container) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -30,21 +30,20 @@ function ResourceDetailPopup(container) {
      * @type {object}
      */
     this._viewModel = null;
-    this._resource = null;
-    this._calendar = null;
-    this._assignees = [];
+    this._team = null;
+    this._resources = null;
 
     domevent.on(container, 'click', this._onClick, this);
 }
 
-util.inherit(ResourceDetailPopup, View);
+util.inherit(TeamDetailPopup, View);
 
 /**
  * Mousedown event handler for hiding popup layer when user mousedown outside of
  * layer
  * @param {MouseEvent} mouseDownEvent - mouse event object
  */
-ResourceDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
+TeamDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
     var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
         popupLayer = domutil.closest(target, config.classname('.floating-layer'));
 
@@ -58,7 +57,7 @@ ResourceDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
 /**
  * @override
  */
-ResourceDetailPopup.prototype.destroy = function() {
+TeamDetailPopup.prototype.destroy = function() {
     this.layer.destroy();
     this.layer = null;
     domevent.off(this.container, 'click', this._onClick, this);
@@ -71,27 +70,27 @@ ResourceDetailPopup.prototype.destroy = function() {
  * Click event handler for close button
  * @param {MouseEvent} clickEvent - mouse event object
  */
-ResourceDetailPopup.prototype._onClick = function(clickEvent) {
+TeamDetailPopup.prototype._onClick = function(clickEvent) {
     var target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditResource(target);
+    this._onClickEditTeam(target);
 
-    this._onClickDeleteResource(target);
+    this._onClickDeleteTeam(target);
 };
 
 /**
- * @fires ResourceDetailPopup#clickEditResource
+ * @fires TeamDetailPopup#clickEditTeam
  * @param {HTMLElement} target - event target
  */
-ResourceDetailPopup.prototype._onClickEditResource = function(target) {
-    var className = config.classname('popup-edit-resource');
+TeamDetailPopup.prototype._onClickEditTeam = function(target) {
+    var className = config.classname('popup-edit-team');
 
     if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
-        this.fire('beforeUpdateResource', {
-            resource: this._resource,
-            assignees: this._assignees,
+        this.fire('beforeUpdateTeam', {
+            team: this._team,
+            resources: this._resources,
             triggerEventName: 'click',
-            trigger: this._resourceEl
+            trigger: this._teamEl
         });
 
         this.hide();
@@ -99,15 +98,15 @@ ResourceDetailPopup.prototype._onClickEditResource = function(target) {
 };
 
 /**
- * @fires ResourceDetailPopup#clickEditResource
+ * @fires TeamDetailPopup#clickEditTeam
  * @param {HTMLElement} target - event target
  */
-ResourceDetailPopup.prototype._onClickDeleteResource = function(target) {
-    var className = config.classname('popup-delete-resource');
+TeamDetailPopup.prototype._onClickDeleteTeam = function(target) {
+    var className = config.classname('popup-delete-team');
 
     if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
-        this.fire('beforeDeleteResource', {
-            resource: this._resource
+        this.fire('beforeDeleteTeam', {
+            team: this._team
         });
 
         this.hide();
@@ -118,23 +117,22 @@ ResourceDetailPopup.prototype._onClickDeleteResource = function(target) {
  * @override
  * @param {object} viewModel - view model from factory/monthView
  */
-ResourceDetailPopup.prototype.render = function(viewModel) {
+TeamDetailPopup.prototype.render = function(viewModel) {
     var layer = this.layer;
     var self = this;
     var boxElement, guideElements;
 
     layer.setContent(tmpl({
-        resource: viewModel.resource,
-        teams: viewModel.teams,
-        assignees: viewModel.assignees
+        team: viewModel.team,
+        resources: viewModel.resources
     }));
     layer.show();
 
     if (viewModel.trigger) {
-        boxElement = domutil.closest(viewModel.trigger, config.classname('.left-nav-bar-resources-item')) ||
+        boxElement = domutil.closest(viewModel.trigger, config.classname('.left-nav-bar-teams-item')) ||
             viewModel.target;
 
-        this._resourceEl = boxElement;
+        this._teamEl = boxElement;
     } else {
         this.guide = viewModel.guide;
         guideElements = this._getGuideElements(this.guide);
@@ -143,24 +141,19 @@ ResourceDetailPopup.prototype.render = function(viewModel) {
 
     this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
 
-    this._resource = viewModel.resource;
-    this._assignees = viewModel.assignees;
+    this._team = viewModel.team;
+    this._resources = viewModel.resources;
 
     util.debounce(function() {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
     })();
-
-    this.fire('beforeDisplayResourceEditWindow', {
-        resource: this._resource,
-        assignees: this._assignees
-    });
 };
 
 /**
  * Set popup position and arrow direction to apear near guide element
  * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
  */
-ResourceDetailPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+TeamDetailPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
     var layer = domutil.find(config.classname('.popup'), this.layer.container);
     var layerSize = {
         width: layer.offsetWidth,
@@ -191,7 +184,7 @@ ResourceDetailPopup.prototype._setPopupPositionAndArrowDirection = function(guid
  * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
  * @returns {PopupRenderingData} rendering position of popup and popup arrow
  */
-ResourceDetailPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+TeamDetailPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
     var guideVerticalCenter = (guideBound.top + guideBound.bottom) / 2;
     var x = guideBound.right;
     var y = guideVerticalCenter;
@@ -236,7 +229,7 @@ ResourceDetailPopup.prototype._calcRenderingData = function(layerSize, parentSiz
  * Set arrow's direction and position
  * @param {Object} arrow rendering data for popup arrow
  */
-ResourceDetailPopup.prototype._setArrowDirection = function(arrow) {
+TeamDetailPopup.prototype._setArrowDirection = function(arrow) {
     var direction = arrow.direction || 'arrow-left';
     var arrowEl = domutil.find(config.classname('.popup-arrow'), this.layer.container);
     var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
@@ -254,7 +247,7 @@ ResourceDetailPopup.prototype._setArrowDirection = function(arrow) {
 /**
  * Hide layer
  */
-ResourceDetailPopup.prototype.hide = function() {
+TeamDetailPopup.prototype.hide = function() {
     this.layer.hide();
 
     if (this.guide) {
@@ -268,10 +261,10 @@ ResourceDetailPopup.prototype.hide = function() {
 /**
  * refresh layer
  */
-ResourceDetailPopup.prototype.refresh = function() {
+TeamDetailPopup.prototype.refresh = function() {
     if (this._viewModel) {
         this.layer.setContent(this.tmpl(this._viewModel));
     }
 };
 
-module.exports = ResourceDetailPopup;
+module.exports = TeamDetailPopup;

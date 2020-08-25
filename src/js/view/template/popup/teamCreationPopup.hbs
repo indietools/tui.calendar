@@ -1,0 +1,44 @@
+<div class="{{CSS_PREFIX}}popup">
+    <div class="{{CSS_PREFIX}}popup-container">
+        <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}dropdown {{CSS_PREFIX}}close {{CSS_PREFIX}}section-color{{#unless recColors.length}} {{CSS_PREFIX}}hide{{/unless}}">
+            <button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}team-color-dropdown-button {{CSS_PREFIX}}popup-section-item">
+                <span id="{{CSS_PREFIX}}team-creation-selected-color" class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}color-tile" style="background-color: {{bgColor}}"></span>
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}dropdown-arrow"></span>
+                </span>
+            </button>
+            <ul class="{{CSS_PREFIX}}dropdown-menu" style="z-index: {{zIndex}}">
+                {{#each recColors}}
+                    <li class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}team-color-dropdown-menu-item" data-color-hex="{{this}}">
+                        <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}color-tile" style="background-color: {{this}}"></span>
+                    </li>
+                {{/each}}
+                <li class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}team-color-dropdown-menu-color-picker-item" style="font-size: 1em;" data-color-hex="{{bgColor}}" onClick="this.lastElementChild.click()">
+                    <div style="position: absolute; border: 1px solid #eee; border-radius: 4px; margin-top: -0.33em; padding: 0.25em;">
+                        <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}color-tile" style="background-color: {{bgColor}}"></span>
+                        <span class="{{CSS_PREFIX}}dropdown-menu-color-label" style="color: #7767BF;">Custom</span>
+                    </div>
+                    <input id="{{CSS_PREFIX}}team-creation-color-input" class="{{CSS_PREFIX}}color-input-on-recommended" type="color" value="{{bgColor}}">
+                </li>
+            </ul>
+        </div>
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-name">
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-team"></span>
+                <input id="{{CSS_PREFIX}}team-name" class="{{CSS_PREFIX}}content" placeholder="Name" value="{{name}}"></span>
+            </div>
+        </div>
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-resources">
+                <input type="text" id="{{CSS_PREFIX}}team-creation-resources-input" class="{{CSS_PREFIX}}resources-input" data-role="tagsinput" >
+
+            </div>
+        </div>
+        <button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}popup-close"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-close"></span></button>
+        <div class="{{CSS_PREFIX}}section-button-save"><button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}confirm {{CSS_PREFIX}}team-popup-save"><span>{{#if isEditMode}}{{{popupUpdate-tmpl}}}{{else}}{{{popupSave-tmpl}}}{{/if}}</span></button></div>
+    </div>
+    <div id="{{CSS_PREFIX}}popup-arrow" class="{{CSS_PREFIX}}popup-arrow {{CSS_PREFIX}}arrow-bottom">
+        <div class="{{CSS_PREFIX}}popup-arrow-border">
+            <div class="{{CSS_PREFIX}}popup-arrow-fill"></div>
+        </div>
+    </div>
+</div>

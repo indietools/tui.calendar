@@ -1,3 +1,7 @@
+# Build Steps
+`npm run bundle`
+Copy `dist/*` to project.
+
 # ![TOAST UI Calendar](https://user-images.githubusercontent.com/26706716/39230183-7f8ff186-48a0-11e8-8d9c-9699d2d0e471.png)
 
 > A JavaScript schedule calendar that is full featured. Now your service just got the customizable calendar.

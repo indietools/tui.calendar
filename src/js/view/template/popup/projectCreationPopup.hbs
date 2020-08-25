@@ -1,0 +1,42 @@
+<div class="{{CSS_PREFIX}}popup">
+    <div class="{{CSS_PREFIX}}popup-container">
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-color" onClick="this.lastElementChild.click()">
+                <span id="{{CSS_PREFIX}}project-color-wrapper" class="{{CSS_PREFIX}}color-wrapper" style="background-color: {{project.bg_color}};"></span>
+                <input id="{{CSS_PREFIX}}project-color-input" class="{{CSS_PREFIX}}color-input" type="color" value="{{project.bg_color}}">
+            </div>
+        </div>
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-start-date">
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-date"></span>
+                <input id="{{CSS_PREFIX}}project-start-date" class="{{CSS_PREFIX}}content" value="{{project.start_date}}"></span>
+                <div id="{{CSS_PREFIX}}startpicker-container" style="margin-left: -1px; position: relative"></div>
+            </div>
+            <span class="{{CSS_PREFIX}}section-date-dash">-</span>
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-end-date">
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-date"></span>
+                <input id="{{CSS_PREFIX}}project-end-date" class="{{CSS_PREFIX}}content" value="{{project.end_date}}"></span>
+                <div id="{{CSS_PREFIX}}endpicker-container" style="margin-left: -1px; position: relative"></div>
+            </div>
+        </div>
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-name">
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-title"></span>
+                <input id="{{CSS_PREFIX}}project-name" class="{{CSS_PREFIX}}content" placeholder="Name" value="{{name}}"></span>
+            </div>
+        </div>
+        <div class="{{CSS_PREFIX}}popup-section">
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-name">
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-description"></span>
+                <input id="{{CSS_PREFIX}}project-description" class="{{CSS_PREFIX}}content" placeholder="Description" value="{{description}}"></span>
+            </div>
+        </div>
+        <button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}popup-close"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-close"></span></button>
+        <div class="{{CSS_PREFIX}}section-button-save"><button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}confirm {{CSS_PREFIX}}project-popup-save"><span>{{#if isEditMode}}{{{popupUpdate-tmpl}}}{{else}}{{{popupSave-tmpl}}}{{/if}}</span></button></div>
+    </div>
+    <div id="{{CSS_PREFIX}}popup-arrow" class="{{CSS_PREFIX}}popup-arrow {{CSS_PREFIX}}arrow-bottom">
+        <div class="{{CSS_PREFIX}}popup-arrow-border">
+            <div class="{{CSS_PREFIX}}popup-arrow-fill"></div>
+        </div>
+    </div>
+</div>

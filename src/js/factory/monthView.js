@@ -17,6 +17,7 @@ var config = require('../config'),
     MonthMove = require('../handler/month/move'),
     More = require('../view/month/more'),
     CalendarCreationPopup = require('../view/popup/calendarCreationPopup'),
+    TeamCreationPopup = require('../view/popup/teamCreationPopup'),
     ScheduleCreationPopup = require('../view/popup/scheduleCreationPopup'),
     ScheduleDetailPopup = require('../view/popup/scheduleDetailPopup'),
     Schedule = require('../model/schedule');
@@ -52,9 +53,11 @@ function getViewModelForMoreLayer(date, target, schedules, daynames) {
  */
 function createMonthView(baseController, layoutContainer, dragHandler, options) {
     var monthViewContainer, monthView, moreView, createView, createCalendarView;
-    var clickHandler, creationHandler, resizeHandler, moveHandler, clearSchedulesHandler, onUpdateSchedule;
-    var onShowCreationPopup, onSaveNewSchedule, onShowEditPopup;
+    var createTeamView, clickHandler, creationHandler, resizeHandler;
+    var moveHandler, clearSchedulesHandler, onUpdateSchedule, onEditCalendar;
+    var onShowCreationPopup, onSaveNewSchedule, onSaveNewTeam, onShowEditPopup;
     var detailView, onShowDetailPopup, onDeleteSchedule, onEditSchedule;
+    var onEditTeam;
 
     monthViewContainer = domutil.appendHTMLElement(
         'div', layoutContainer, config.classname('month'));
@@ -116,7 +119,10 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
     // binding popup for schedules creation
     if (options.useCreationPopup) {
-        createView = new ScheduleCreationPopup(layoutContainer, baseController.calendars, options.usageStatistics);
+        createView = new ScheduleCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
+        createTeamView = new TeamCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
         createCalendarView = new CalendarCreationPopup(
             layoutContainer, baseController.calendars, options.usageStatistics);
 
@@ -128,6 +134,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
         createView.on('beforeCreateCalendar', onSaveNewSchedule);
+        createView.on('beforeCreateTeam', onSaveNewTeam);
     }
 
     // binding popup for schedule detail
@@ -164,7 +171,8 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
                 createView.render(eventData);
             };
             createView.on('beforeUpdateSchedule', onEditSchedule);
-            createView.on('beforeUpdateCalendar', onEditSchedule);
+            createView.on('beforeUpdateCalendar', onEditCalendar);
+            createView.on('beforeUpdateTeam', onEditTeam);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
@@ -243,6 +251,11 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         view: monthView,
         refresh: function() {
             monthView.vLayout.refresh();
+        },
+        openTeamCreationPopup: function() {
+            if (createTeamView && creationHandler) {
+                creationHandler.invokeTeamCreationClick();
+            }
         },
         openCalendarCreationPopup: function() {
             if (createCalendarView && creationHandler) {

@@ -60,6 +60,12 @@ function Base(options) {
     this.theme = new Theme(options.theme);
 
     /**
+     * Team list
+     * @type {Array.<Team>}
+     */
+    this.teams = common.createTeamCollection();
+
+    /**
      * Calendar list
      * @type {Array.<Calendar>}
      */
@@ -70,6 +76,12 @@ function Base(options) {
      * @type {Array.<Resource>}
      */
     this.resources = common.createResourceCollection();
+
+    /**
+     * User list
+     * @type {Array.<User>}
+     */
+    this.users = common.createUserCollection();
 }
 
 /**
@@ -178,8 +190,16 @@ Base.prototype.updateCalendar = function(calendar, options) {
         calendar.borderColor = options.borderColor;
     }
 
+    if (options.teams) {
+        calendar.teams = options.teams;
+    }
+
     if (options.resources) {
         calendar.resources = options.resources;
+    }
+
+    if (options.users) {
+        calendar.users = options.users;
     }
 
     if (options.checked) {
@@ -192,6 +212,56 @@ Base.prototype.updateCalendar = function(calendar, options) {
     this.fire('updateCalendar');
 
     return calendar;
+};
+
+/**
+ * Update a team.
+ * @emits Base#updateTeam
+ * @param {Team} team - team instance to update
+ * @param {object} options updated object data.
+ * @returns {Team} updated team instance
+ */
+Base.prototype.updateTeam = function(team, options) {
+    options = options || {};
+
+    if (!util.isUndefined(options.name)) {
+        team.name = options.name;
+    }
+
+    if (!util.isUndefined(options.bgColor)) {
+        team.bgColor = options.bgColor;
+    }
+
+    if (options.color) {
+        team.color = options.color;
+    }
+
+    if (options.dragBgColor) {
+        team.dragBgColor = options.dragBgColor;
+    }
+
+    if (options.borderColor) {
+        team.borderColor = options.borderColor;
+    }
+
+    if (!util.isUndefined(options.resources) && options.resources instanceof Array) {
+        team.resources = options.resources;
+    }
+
+    if (!util.isUndefined(options.calendars) && options.calendars instanceof Array) {
+        team.calendars = options.calendars || [];
+    }
+
+    if (options.checked) {
+        team.checked = options.checked;
+    }
+
+    /**
+     * @event Base#updateTeam
+     */
+    this.fire('updateTeam');
+
+    return team;
 };
 
 /**
@@ -208,8 +278,32 @@ Base.prototype.updateResource = function(resource, options) {
         resource.name = options.name;
     }
 
-    if (!util.isUndefined(options.calendars) && options.calendars instanceof Array) {
-        resource.calendars = options.calendars || [];
+    if (!util.isUndefined(options.isPerson)) {
+        resource.isPerson = options.isPerson;
+    }
+
+    if (!util.isUndefined(options.bgColor)) {
+        resource.bgColor = options.bgColor;
+    }
+
+    if (options.color) {
+        resource.color = options.color;
+    }
+
+    if (options.dragBgColor) {
+        resource.dragBgColor = options.dragBgColor;
+    }
+
+    if (options.borderColor) {
+        resource.borderColor = options.borderColor;
+    }
+
+    if (!util.isUndefined(options.assignees) && options.assignees instanceof Array) {
+        resource.assignees = options.assignees || [];
+    }
+
+    if (!util.isUndefined(options.teams) && options.teams instanceof Array) {
+        resource.teams = options.teams || [];
     }
 
     if (options.checked) {
@@ -222,6 +316,48 @@ Base.prototype.updateResource = function(resource, options) {
     this.fire('updateResource');
 
     return resource;
+};
+
+/**
+ * Update a user.
+ * @emits Base#updateUser
+ * @param {User} user - user instance to update
+ * @param {object} options updated object data.
+ * @returns {User} updated user instance
+ */
+Base.prototype.updateUser = function(user, options) {
+    options = options || {};
+
+    if (!util.isUndefined(options.id)) {
+        user.id = options.id;
+    }
+
+    if (!util.isUndefined(options.remoteId)) {
+        user.remoteId = options.remoteId;
+    }
+
+    if (!util.isUndefined(options.resources) && options.resources instanceof Array) {
+        user.resources = options.resources;
+    }
+
+    if (!util.isUndefined(options.name)) {
+        user.name = options.name;
+    }
+
+    if (!util.isUndefined(options.email)) {
+        user.email = options.email;
+    }
+
+    if (!util.isUndefined(options.phone)) {
+        user.phone = options.phone;
+    }
+
+    /**
+     * @event Base#updateUser
+     */
+    this.fire('updateUser');
+
+    return user;
 };
 
 /**
@@ -317,6 +453,19 @@ Base.prototype.updateSchedule = function(schedule, options) {
 };
 
 /**
+ * Delete team instance from controller.
+ * @param {Team} team - team instance to delete
+ * @returns {Team} deleted model instance.
+ */
+Base.prototype.deleteTeam = function(team) {
+    this.teams = this.teams.filter(function(res) {
+        return res.id !== team.id;
+    });
+
+    return team;
+};
+
+/**
  * Delete resource instance from controller.
  * @param {Resource} resource - resource instance to delete
  * @returns {Resource} deleted model instance.
@@ -327,6 +476,19 @@ Base.prototype.deleteResource = function(resource) {
     });
 
     return resource;
+};
+
+/**
+ * Delete user instance from controller.
+ * @param {User} user - user instance to delete
+ * @returns {User} deleted model instance.
+ */
+Base.prototype.deleteUser = function(user) {
+    this.users = this.users.filter(function(res) {
+        return res.id !== user.id;
+    });
+
+    return user;
 };
 
 /**
@@ -387,6 +549,27 @@ Base.prototype._removeFromMatrix = function(schedule) {
 };
 
 /**
+ * Add a team instance.
+ * @emits Base#addedTeam
+ * @param {Team} team The instance of Team.
+ * @param {boolean} silent - set true then don't fire events.
+ * @returns {Team} The instance of Team that added.
+ */
+Base.prototype.addTeam = function(team, silent) {
+    this.teams.add(team);
+
+    if (!silent) {
+        /**
+         * @event Base#addedTeam
+         * @type {object}
+         */
+        this.fire('addedTeam', team);
+    }
+
+    return team;
+};
+
+/**
  * Add a resource instance.
  * @emits Base#addedResource
  * @param {Resource} resource The instance of Resource.
@@ -405,6 +588,27 @@ Base.prototype.addResource = function(resource, silent) {
     }
 
     return resource;
+};
+
+/**
+ * Add a user instance.
+ * @emits Base#addedUser
+ * @param {User} user The instance of User.
+ * @param {boolean} silent - set true then don't fire events.
+ * @returns {User} The instance of User that added.
+ */
+Base.prototype.addUser = function(user, silent) {
+    this.users.add(user);
+
+    if (!silent) {
+        /**
+         * @event Base#addedUser
+         * @type {object}
+         */
+        this.fire('addedUser', user);
+    }
+
+    return user;
 };
 
 /**
@@ -543,11 +747,27 @@ Base.prototype.setTheme = function(theme) {
 };
 
 /**
+ * Set team list
+ * @param {Array.<Team>} teams - team list
+ */
+Base.prototype.setTeams = function(teams) {
+    this.teams = teams;
+};
+
+/**
  * Set resource list
  * @param {Array.<Resource>} resources - resource list
  */
 Base.prototype.setResources = function(resources) {
     this.resources = resources;
+};
+
+/**
+ * Set user list
+ * @param {Array.<User>} users - user list
+ */
+Base.prototype.setUsers = function(users) {
+    this.users = users;
 };
 
 /**

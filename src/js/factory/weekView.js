@@ -18,10 +18,14 @@ var Week = require('../view/week/week');
 var DayName = require('../view/week/dayname');
 var DayGrid = require('../view/week/dayGrid');
 var TimeGrid = require('../view/week/timeGrid');
+var ProjectCreationPopup = require('../view/popup/projectCreationPopup');
 var ResourceCreationPopup = require('../view/popup/resourceCreationPopup');
+var TeamCreationPopup = require('../view/popup/teamCreationPopup');
 var CalendarCreationPopup = require('../view/popup/calendarCreationPopup');
 var ScheduleCreationPopup = require('../view/popup/scheduleCreationPopup');
+var ProjectDetailPopup = require('../view/popup/projectDetailPopup');
 var ScheduleDetailPopup = require('../view/popup/scheduleDetailPopup');
+var TeamDetailPopup = require('../view/popup/teamDetailPopup');
 var CalendarDetailPopup = require('../view/popup/calendarDetailPopup');
 var ResourceDetailPopup = require('../view/popup/resourceDetailPopup');
 
@@ -93,12 +97,18 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     var panels = [],
         vpanels = [];
     var weekView, dayNameContainer, dayNameView, vLayoutContainer, vLayout;
-    var createView, createCalendarView, createResourceView, onSaveNewSchedule, onSaveNewCalendar;
-    var onSaveNewResource, onSetCalendars, lastVPanel;
-    var detailView, detailCalendarView, detailResourceView, onShowDetailPopup, onShowCalendarDetailPopup;
-    var onShowResourceDetailPopup, onDeleteSchedule, onDeleteCalendar, onDeleteResource, onShowEditPopup;
-    var onShowCalendarEditPopup, onShowResourceEditPopup, onEditSchedule, onEditCalendar;
-    var onDisplayEditSchedule, onDisplayEditCalendar, onUpdateScheduleCalendar, onEditResource;
+    var createProjectView, onDisplayEditProject, onBeforeDisplayEditResource;
+    var createView, createCalendarView, createTeamView, createResourceView;
+    var onSaveNewSchedule, onSaveNewCalendar, onSaveNewTeam, onSaveNewResource;
+    var onSetCalendars, lastVPanel, onShowProjectDetailPopup, onDisplayEditTeam;
+    var onDisplayEditResource, onEditProject, onShowProjectEditPopup;
+    var detailProjectView, detailView, detailCalendarView, detailResourceView;
+    var detailTeamView, onShowTeamEditPopup, onShowTeamDetailPopup;
+    var onShowDetailPopup, onShowCalendarDetailPopup, onShowResourceDetailPopup;
+    var onDeleteSchedule, onDeleteCalendar, onDeleteTeam, onDeleteResource;
+    var onShowEditPopup, onShowCalendarEditPopup, onShowResourceEditPopup;
+    var onEditSchedule, onEditCalendar, onEditTeam, onDisplayEditSchedule;
+    var onDisplayEditCalendar, onUpdateScheduleCalendar, onEditResource;
     var taskView = options.taskView;
     var scheduleView = options.scheduleView;
     var viewVisibilities = {
@@ -241,12 +251,20 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
     // binding create schedules event
     if (options.useCreationPopup) {
+        createProjectView = new ProjectCreationPopup(
+            layoutContainer, options.usageStatistics);
         createView = new ScheduleCreationPopup(
-            layoutContainer, baseController.calendars, baseController.resources, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
+        createTeamView = new TeamCreationPopup(
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
         createCalendarView = new CalendarCreationPopup(
-            layoutContainer, baseController.calendars, baseController.resources, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
         createResourceView = new ResourceCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             util.extend(scheduleData, {
@@ -257,6 +275,13 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             } else {
                 weekView.handler.creation.time.fire('beforeCreateSchedule', scheduleData);
             }
+        };
+
+        onSaveNewTeam = function(teamData) {
+            util.extend(teamData, {
+                useCreationPopup: true
+            });
+            weekView.handler.creation.allday.fire('beforeCreateTeam', teamData);
         };
 
         onSaveNewCalendar = function(calendarData) {
@@ -274,13 +299,18 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         };
 
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
+        createTeamView.on('beforeCreateTeam', onSaveNewTeam);
         createCalendarView.on('beforeCreateCalendar', onSaveNewCalendar);
         createResourceView.on('beforeCreateResource', onSaveNewResource);
     }
 
+    // TODO: onSetResources/Teams?
     onSetCalendars = function(calendars) {
         if (createView) {
             createView.setCalendars(calendars);
+        }
+        if (createTeamView) {
+            createTeamView.setCalendars(calendars);
         }
         if (createCalendarView) {
             createCalendarView.setCalendars(calendars);
@@ -294,21 +324,25 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
     // binding popup for schedule detail
     if (options.useDetailPopup) {
+        detailProjectView = new ProjectDetailPopup(layoutContainer, baseController.calendars);
         detailView = new ScheduleDetailPopup(layoutContainer, baseController.calendars);
+        detailTeamView = new TeamDetailPopup(layoutContainer, baseController.resources);
         detailCalendarView = new CalendarDetailPopup(layoutContainer, baseController.calendars);
-        detailResourceView = new ResourceDetailPopup(layoutContainer, baseController.calendars);
+        detailResourceView = new ResourceDetailPopup(layoutContainer);
 
         onShowDetailPopup = function(eventData) {
             var scheduleId = eventData.schedule.calendarId;
-            var resourceIds;
+            var resourceIds = eventData.schedule.attendees || [];
             eventData.calendar = common.find(baseController.calendars, function(calendar) {
                 return calendar.id === scheduleId;
             });
 
-            resourceIds = eventData.schedule.attendees || [];
             eventData.attendees = baseController.resources.filter(function(res) {
                 return resourceIds.includes(res.id);
             });
+            eventData.attendees.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
 
             if (options.isReadOnly) {
                 eventData.schedule = util.extend({}, eventData.schedule, {isReadOnly: true});
@@ -316,30 +350,61 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
             detailView.render(eventData);
         };
-        onShowCalendarDetailPopup = function(eventData) {
+        onShowProjectDetailPopup = function(eventData) {
+            detailProjectView.render(eventData);
+        };
+        onShowTeamDetailPopup = function(eventData) {
             var calendarId = eventData.calendarId;
+            var teamId = eventData.teamId;
             var resourceIds;
+
+            eventData.team = common.find(baseController.teams, function(team) {
+                return team.id === teamId;
+            });
+
+            resourceIds = eventData.team.resources || [];
+
             eventData.calendar = common.find(baseController.calendars, function(calendar) {
                 return calendar.id === calendarId;
             });
 
-            resourceIds = eventData.calendar.resources || [];
             eventData.resources = baseController.resources.filter(function(res) {
                 return resourceIds.includes(res.id);
             });
+            eventData.resources.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
+
+            detailTeamView.render(eventData);
+        };
+        onShowCalendarDetailPopup = function(eventData) {
+            var calendarId = eventData.calendarId;
+            // var resourceIds = eventData.calendar.resources || [];
+            eventData.calendar = common.find(baseController.calendars, function(calendar) {
+                return calendar.id === calendarId;
+            });
+
+            // eventData.resources = baseController.resources.filter(function(res) {
+            //     return resourceIds.includes(res.id);
+            // });
 
             detailCalendarView.render(eventData);
         };
         onShowResourceDetailPopup = function(eventData) {
             var resourceId = eventData.resourceId;
-            var calendarIds;
+            var teamIds, resourceIds;
             eventData.resource = common.find(baseController.resources, function(resource) {
                 return resource.id === resourceId;
             });
 
-            calendarIds = eventData.resource.calendars || [];
-            eventData.calendars = baseController.calendars.filter(function(cal) {
-                return calendarIds.includes(cal.id);
+            resourceIds = eventData.resource.assignees || [];
+            teamIds = eventData.resource.teams || [];
+            eventData.teams = baseController.teams.filter(function(team) {
+                return teamIds.includes(team.id);
+            });
+
+            eventData.assignees = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
             });
 
             detailResourceView.render(eventData);
@@ -350,6 +415,9 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             } else {
                 weekView.handler.creation.time.fire('beforeDeleteSchedule', eventData);
             }
+        };
+        onDeleteTeam = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeDeleteTeam', eventData);
         };
         onDeleteCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('beforeDeleteCalendar', eventData);
@@ -364,6 +432,12 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 weekView.handler.move.time.fire('beforeUpdateSchedule', eventData);
             }
         };
+        onEditProject = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeUpdateProject', eventData);
+        };
+        onEditTeam = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeUpdateTeam', eventData);
+        };
         onEditCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('beforeUpdateCalendar', eventData);
         };
@@ -373,8 +447,20 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         onUpdateScheduleCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('afterUpdateScheduleCalendar', eventData);
         };
+        onDisplayEditTeam = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayTeamEditWindow', eventData);
+        };
+        onDisplayEditProject = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayProjectEditWindow', eventData);
+        };
         onDisplayEditCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('afterDisplayCalendarEditWindow', eventData);
+        };
+        onDisplayEditResource = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayResourceEditWindow', eventData);
+        };
+        onBeforeDisplayEditResource = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeDisplayResourceEditWindow', eventData);
         };
         onEditResource = function(eventData) {
             weekView.handler.creation.allday.fire('beforeUpdateResource', eventData);
@@ -395,6 +481,24 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             createView.on('afterUpdateScheduleCalendar', onUpdateScheduleCalendar);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
 
+            onShowProjectEditPopup = function(eventData) {
+                eventData.isEditMode = true;
+                createProjectView.render(eventData);
+            };
+            createProjectView.on('beforeUpdateProject', onEditProject);
+            createProjectView.on('afterDisplayProjectEditWindow', onDisplayEditProject);
+            detailProjectView.on('beforeUpdateProject', onShowProjectEditPopup);
+
+            onShowTeamEditPopup = function(eventData) {
+                var resources = baseController.resources;
+                eventData.isEditMode = true;
+                createTeamView.setResources(resources);
+                createTeamView.render(eventData);
+            };
+            createTeamView.on('beforeUpdateTeam', onEditTeam);
+            createTeamView.on('afterDisplayTeamEditWindow', onDisplayEditTeam);
+            detailTeamView.on('beforeUpdateTeam', onShowTeamEditPopup);
+
             onShowCalendarEditPopup = function(eventData) {
                 var calendars = baseController.calendars;
                 eventData.isEditMode = true;
@@ -406,19 +510,23 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             detailCalendarView.on('beforeUpdateCalendar', onShowCalendarEditPopup);
 
             onShowResourceEditPopup = function(eventData) {
-                var calendars = baseController.calendars;
+                var teams = baseController.teams;
                 eventData.isEditMode = true;
-                createResourceView.setCalendars(calendars);
+                createResourceView.setTeams(teams);
                 createResourceView.render(eventData);
             };
             createResourceView.on('beforeUpdateResource', onEditResource);
+            createResourceView.on('afterDisplayResourceEditWindow', onDisplayEditResource);
+            detailResourceView.on('beforeDisplayResourceEditWindow', onBeforeDisplayEditResource);
             detailResourceView.on('beforeUpdateResource', onShowResourceEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
+            detailTeamView.on('beforeUpdateTeam', onEditTeam);
             detailCalendarView.on('beforeUpdateCalendar', onEditCalendar);
             detailResourceView.on('beforeUpdateResource', onEditResource);
         }
         detailView.on('beforeDeleteSchedule', onDeleteSchedule);
+        detailTeamView.on('beforeDeleteTeam', onDeleteTeam);
         detailCalendarView.on('beforeDeleteCalendar', onDeleteCalendar);
         detailResourceView.on('beforeDeleteResource', onDeleteResource);
     }
@@ -442,6 +550,11 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (options.useCreationPopup) {
             createResourceView.off('beforeCreateResource', onSaveNewResource);
             createResourceView.destroy();
+        }
+
+        if (options.useCreationPopup) {
+            createTeamView.off('beforeCreateTeam', onSaveNewTeam);
+            createTeamView.destroy();
         }
 
         if (options.useCreationPopup) {
@@ -507,6 +620,22 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 onShowResourceDetailPopup(resource);
             }
         },
+        openTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                weekView.handler.creation.allday.invokeTeamCreationClick(team);
+            }
+        },
+        showTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                createTeamView.render(team);
+            }
+        },
+        showTeamDetailPopup: function(team) {
+            if (onShowTeamDetailPopup) {
+                team.guide = weekView.handler.creation.allday.guide;
+                onShowTeamDetailPopup(team);
+            }
+        },
         openCalendarCreationPopup: function(calendar) {
             if (createCalendarView) {
                 weekView.handler.creation.allday.invokeCalendarCreationClick(calendar);
@@ -521,6 +650,22 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             if (onShowCalendarDetailPopup) {
                 calendar.guide = weekView.handler.creation.allday.guide;
                 onShowCalendarDetailPopup(calendar);
+            }
+        },
+        openProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                weekView.handler.creation.allday.invokeProjectCreationClick(project);
+            }
+        },
+        showProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                createProjectView.render(project);
+            }
+        },
+        showProjectDetailPopup: function(project) {
+            if (onShowProjectDetailPopup) {
+                project.guide = weekView.handler.creation.allday.guide;
+                onShowProjectDetailPopup(project);
             }
         },
         openCreationPopup: function(schedule) {

@@ -1,21 +1,47 @@
 <div class="{{CSS_PREFIX}}popup">
     <div class="{{CSS_PREFIX}}popup-container">
+        <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}dropdown {{CSS_PREFIX}}close {{CSS_PREFIX}}section-color{{#unless recColors.length}} {{CSS_PREFIX}}hide{{/unless}}">
+            <button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}resource-color-dropdown-button {{CSS_PREFIX}}popup-section-item">
+                <span id="{{CSS_PREFIX}}resource-creation-selected-color" class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}color-tile" style="background-color: {{bgColor}}"></span>
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}dropdown-arrow"></span>
+                </span>
+            </button>
+            <ul class="{{CSS_PREFIX}}dropdown-menu" style="z-index: {{zIndex}}">
+                {{#each recColors}}
+                    <li class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}resource-color-dropdown-menu-item" data-color-hex="{{this}}">
+                        <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}color-tile" style="background-color: {{this}}"></span>
+                    </li>
+                {{/each}}
+                <li class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}resource-color-dropdown-menu-color-picker-item" style="font-size: 1em;" data-color-hex="{{bgColor}}" onClick="this.lastElementChild.click()">
+                    <div style="position: absolute; border: 1px solid #eee; border-radius: 4px; margin-top: -0.33em; padding: 0.25em;">
+                        <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}color-tile" style="background-color: {{bgColor}}"></span>
+                        <span class="{{CSS_PREFIX}}dropdown-menu-color-label" style="color: #7767BF;">Custom</span>
+                    </div>
+                    <input id="{{CSS_PREFIX}}resource-creation-color-input" class="{{CSS_PREFIX}}color-input-on-recommended" type="color" value="{{bgColor}}">
+                </li>
+            </ul>
+        </div>
         <div class="{{CSS_PREFIX}}popup-section">
-            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-title">
-                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-title"></span>
-                <input id="{{CSS_PREFIX}}resource-title" class="{{CSS_PREFIX}}content" placeholder="Name" value="{{name}}"></span>
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-name">
+                <span class="{{CSS_PREFIX}}icon {{#if isPerson}}{{CSS_PREFIX}}ic-person{{else}}{{CSS_PREFIX}}ic-nonperson{{/if}}"></span>
+                <input id="{{CSS_PREFIX}}resource-name" class="{{CSS_PREFIX}}content" placeholder="Name" value="{{name}}"></span>
+            </div>
+            <div class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}section-isperson">
+                <input id="{{CSS_PREFIX}}resource-isperson" type="checkbox" class="{{CSS_PREFIX}}checkbox-square"{{#if isPerson}} checked{{/if}}></input>
+                <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-checkbox" style="margin: 0;"></span>
+                <span class="{{CSS_PREFIX}}content">{{{popupIsPerson-tmpl}}}</span>
             </div>
         </div>
-       <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}select {{CSS_PREFIX}}close {{CSS_PREFIX}}section-calendar{{#unless calendars.length}} {{CSS_PREFIX}}hide{{/unless}}">
+        <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}select {{CSS_PREFIX}}close {{CSS_PREFIX}}section-team{{#unless teams.length}} {{CSS_PREFIX}}hide{{/unless}}">
             <button class="{{CSS_PREFIX}}button {{CSS_PREFIX}}select-button {{CSS_PREFIX}}popup-section-item">
                 <span id="{{CSS_PREFIX}}teams" class="{{CSS_PREFIX}}content">Teams <span id="countSpan">({{selectedIds.length}})</span>:</span>
                 <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}dropdown-arrow"></span>
                 </span>
             </button>
             <ul class="{{CSS_PREFIX}}select-menu" style="z-index: {{zIndex}}">
-                {{#each calendars}}
-                    <li class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}select-menu-item {{CSS_PREFIX}}select-menu-item{{#if (in id ../selectedIds)}}-selected{{/if}}" data-calendar-id="{{id}}">
-                        <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}calendar-dot" style="background-color: {{bgColor}}"></span>
+                {{#each teams}}
+                    <li class="{{CSS_PREFIX}}popup-section-item {{CSS_PREFIX}}select-menu-item {{CSS_PREFIX}}select-menu-item{{#if (in id ../selectedIds)}}-selected{{/if}}" data-team-id="{{id}}">
+                        <span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}team-dot" style="background-color: {{bgColor}}"></span>
                         <span class="{{CSS_PREFIX}}content">{{name}}</span>
                     </li>
                 {{/each}}

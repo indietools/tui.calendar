@@ -1,6 +1,6 @@
 /*!
  * TOAST UI Calendar
- * @version 1.12.11 | Wed Apr 29 2020
+ * @version 1.12.11 | Tue Aug 25 2020
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  * @license MIT
  */
@@ -2863,6 +2863,198 @@ colorutil = {
         }
 
         return (((r * 0.299) + (g * 0.587) + (b * 0.114)) > THRESHOLD) ? '#000000' : '#ffffff';
+    },
+    /**
+     * Genearte a recommended, complimentary color to a provided reference
+     * color, omitting desired colors.
+     * @param {string} color - hex coded background color to determine recommended color for.
+     * @param {array} omitColors - array of hex coded background colors which the result can't match
+     * @returns {array} array of hex coded recommended colors
+     */
+    getRecommendedColors: function(color, omitColors) {
+        var suggestedColors = [];
+        var colorR, colorG, colorB, HSL, newHSL, newHex, nS, nL;
+        var cCounter = 0.075;
+
+        color = (color === '#ffffff' ? '#000000' : color);
+        colorR = color.substring(1, 3);
+        colorG = color.substring(3, 5);
+        colorB = color.substring(5, 7);
+
+        HSL = this.rgb2Hsl(colorR, colorG, colorB);
+        nS = (HSL.s > 0.9 ? 0.9 : 1.1);
+        nL = (HSL.l > 0.5 ? 0.6 : 1.3);
+
+        while (cCounter < 1) {
+            if (Math.abs(cCounter - HSL.h) > 0.1) {
+                newHSL = {
+                    'h': cCounter,
+                    's': HSL.s,
+                    'l': HSL.l
+                };
+                newHex = this.hsl2Rgb(newHSL.h, newHSL.s, newHSL.l);
+                suggestedColors.push(newHex);
+            }
+            cCounter += 0.075;
+        }
+
+        cCounter = 0.075;
+        while (cCounter + 0.0375 < 1) {
+            newHSL = {
+                'h': cCounter + 0.0375,
+                's': HSL.s * nS,
+                'l': HSL.l * nL
+            };
+            newHex = this.hsl2Rgb(newHSL.h, newHSL.s, newHSL.l);
+            suggestedColors.push(newHex);
+            cCounter += 0.075;
+        }
+
+        suggestedColors = suggestedColors.filter(function(c) {
+            return !omitColors.includes(c);
+        });
+
+        if (suggestedColors.length < 1) {
+            return [this.randomColor('')];
+        }
+
+        return suggestedColors;
+    },
+    /**
+     * Return a hex string from an RGB color string
+     * @param {string} rgb - the red component of a hex color
+     * @returns {string} Hex color string
+     */
+    rgb2Hex: function(rgb) {
+        rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+
+        return '#' + hexify(rgb[1]) + hexify(rgb[2]) + hexify(rgb[3]);
+
+        function hexify(x) {
+            var intX = parseInt(x, 10);
+            if (isNaN(x)) {
+                return '00';
+            }
+
+            return intX < 15 ? '0' + intX.toString(16) : intX.toString(16);
+        }
+    },
+    /**
+     * Return a dict with the H, S, and L values for a given RGB triplet
+     * @param {string} varR - the red component of a hex color
+     * @param {string} varG - the green component of a hex color
+     * @param {string} varB - the blue component of a hex color
+     * @returns {object} dict containing 'h', 's', and 'l' values
+     */
+    rgb2Hsl: function(varR, varG, varB) {
+        var r = parseInt(varR, 16) / 255;
+        var g = parseInt(varG, 16) / 255;
+        var b = parseInt(varB, 16) / 255;
+        var min = Math.min(r, g, b);
+        var max = Math.max(r, g, b);
+        var h, s, deltaR, deltaG, deltaB;
+        var deltaMax = max - min;
+        var l = (max + min) / 2;
+
+        if (deltaMax === 0) {
+            h = 0;
+            s = 0;
+        } else {
+            if (l < 0.5) {
+                s = deltaMax / (max + min);
+            } else {
+                s = deltaMax / (2 - max - min);
+            }
+            deltaR = (((max - r) / 6) + (deltaMax / 2)) / deltaMax;
+            deltaG = (((max - g) / 6) + (deltaMax / 2)) / deltaMax;
+            deltaB = (((max - b) / 6) + (deltaMax / 2)) / deltaMax;
+
+            if (r === max) {
+                h = deltaB - deltaG;
+            } else if (g === max) {
+                h = (1 / 3) + deltaR - deltaB;
+            } else if (b === max) {
+                h = (2 / 3) + deltaG - deltaR;
+            }
+
+            if (h < 0) {
+                h += 1;
+            }
+
+            if (h > 1) {
+                h -= 1;
+            }
+        }
+
+        return {
+            'h': h,
+            's': s,
+            'l': l
+        };
+    },
+    /**
+     * Returns a hex color string from HSL values.
+     * @param {string} h - the "hue" component of a hex color
+     * @param {string} s - the "saturation" component of a color
+     * @param {string} l - the "lightness" componenet of a color
+     * @returns {string} hex color string
+     */
+    hsl2Rgb: function(h, s, l) {
+        var r, g, b, hueVar1, hueVar2;
+
+        if (s === 0) {
+            r = l * 255;
+            g = l * 255;
+            b = l * 255;
+        } else {
+            if (l < 0.5) {
+                hueVar2 = l * (1 + s);
+            } else {
+                hueVar2 = (l + s) - (s * l);
+            }
+
+            hueVar1 = (2 * l) - hueVar2;
+            r = 255 * hue2Rgb(hueVar1, hueVar2, h + (1 / 3));
+            g = 255 * hue2Rgb(hueVar1, hueVar2, h);
+            b = 255 * hue2Rgb(hueVar1, hueVar2, h - (1 / 3));
+        }
+
+        return '#' + (Math.round(r) < 16 ?
+            '0' + Math.round(r).toString(16) : Math.round(r).toString(16)) +
+            (Math.round(g) < 16 ?
+                '0' + Math.round(g).toString(16) : Math.round(g).toString(16)) +
+            (Math.round(b) < 16 ?
+                '0' + Math.round(b).toString(16) : Math.round(b).toString(16));
+        // Function to convert hue to RGB, called from above
+        function hue2Rgb(v1, v2, vh) {
+            if (vh < 0) {
+                vh += 1;
+            }
+            if (vh > 1) {
+                vh -= 1;
+            }
+
+            if ((6 * vh) < 1) {
+                return (v1 + (((v2 - v1) * 6) * vh));
+            }
+            if ((2 * vh) < 1) {
+                return (v2);
+            }
+            if ((3 * vh) < 2) {
+                return (v1 + ((v2 - v1) * (((2 / 3) - vh) * 6)));
+            }
+
+            return (v1);
+        }
+    },
+    /**
+     * Genearte a random hex color string
+     * @param {string} lor - string which will be populated with random hex characters.
+     * @returns {string} hex coded color
+     */
+    randomColor: function(lor) {
+        var c = (lor += [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'][Math.floor(Math.random() * 16)]);
+        return c && (lor.length === 6) ? lor : this.randomColor(lor);
     }
 };
 
@@ -2934,7 +3126,35 @@ module.exports = {
      * @param {...*} initItems - items to add newly created collection.
      * @returns {Collection} new collection for schedule models.
      */
+    createTeamCollection: function(initItems) {    // eslint-disable-line
+        var collection = new Collection(scheduleIDGetter);
+
+        if (arguments.length) {
+            collection.add.apply(collection, arguments);
+        }
+
+        return collection;
+    },
+
+    /**
+     * @param {...*} initItems - items to add newly created collection.
+     * @returns {Collection} new collection for schedule models.
+     */
     createResourceCollection: function(initItems) {    // eslint-disable-line
+        var collection = new Collection(scheduleIDGetter);
+
+        if (arguments.length) {
+            collection.add.apply(collection, arguments);
+        }
+
+        return collection;
+    },
+
+    /**
+     * @param {...*} initItems - items to add newly created collection.
+     * @returns {Collection} new collection for schedule models.
+     */
+    createUserCollection: function(initItems) {    // eslint-disable-line
         var collection = new Collection(scheduleIDGetter);
 
         if (arguments.length) {
@@ -3261,11 +3481,37 @@ module.exports = {
         return util.isEmpty(changes) ? null : changes;
     },
 
+    getTeamChanges: function(team, propNames, data) {
+        var changes = {};
+
+        util.forEach(propNames, function(propName) {
+            if (data[propName] && team[propName] !== data[propName]) {
+                changes[propName] = data[propName];
+            }
+        });
+
+        return util.isEmpty(changes) ? null : changes;
+    },
+
     getResourceChanges: function(resource, propNames, data) {
         var changes = {};
 
         util.forEach(propNames, function(propName) {
-            if (data[propName] && resource[propName] !== data[propName]) {
+            // TODO: Should I use a string representation of the boolean?
+            if (propName in data && resource[propName] !== data[propName]) {
+                changes[propName] = data[propName];
+            }
+        });
+
+        return util.isEmpty(changes) ? null : changes;
+    },
+
+    getUserChanges: function(user, propNames, data) {
+        var changes = {};
+
+        util.forEach(propNames, function(propName) {
+            // TODO: Should I use a string representation of the boolean?
+            if (propName in data && user[propName] !== data[propName]) {
                 changes[propName] = data[propName];
             }
         });
@@ -7263,6 +7509,12 @@ function Base(options) {
     this.theme = new Theme(options.theme);
 
     /**
+     * Team list
+     * @type {Array.<Team>}
+     */
+    this.teams = common.createTeamCollection();
+
+    /**
      * Calendar list
      * @type {Array.<Calendar>}
      */
@@ -7273,6 +7525,12 @@ function Base(options) {
      * @type {Array.<Resource>}
      */
     this.resources = common.createResourceCollection();
+
+    /**
+     * User list
+     * @type {Array.<User>}
+     */
+    this.users = common.createUserCollection();
 }
 
 /**
@@ -7381,8 +7639,16 @@ Base.prototype.updateCalendar = function(calendar, options) {
         calendar.borderColor = options.borderColor;
     }
 
+    if (options.teams) {
+        calendar.teams = options.teams;
+    }
+
     if (options.resources) {
         calendar.resources = options.resources;
+    }
+
+    if (options.users) {
+        calendar.users = options.users;
     }
 
     if (options.checked) {
@@ -7395,6 +7661,56 @@ Base.prototype.updateCalendar = function(calendar, options) {
     this.fire('updateCalendar');
 
     return calendar;
+};
+
+/**
+ * Update a team.
+ * @emits Base#updateTeam
+ * @param {Team} team - team instance to update
+ * @param {object} options updated object data.
+ * @returns {Team} updated team instance
+ */
+Base.prototype.updateTeam = function(team, options) {
+    options = options || {};
+
+    if (!util.isUndefined(options.name)) {
+        team.name = options.name;
+    }
+
+    if (!util.isUndefined(options.bgColor)) {
+        team.bgColor = options.bgColor;
+    }
+
+    if (options.color) {
+        team.color = options.color;
+    }
+
+    if (options.dragBgColor) {
+        team.dragBgColor = options.dragBgColor;
+    }
+
+    if (options.borderColor) {
+        team.borderColor = options.borderColor;
+    }
+
+    if (!util.isUndefined(options.resources) && options.resources instanceof Array) {
+        team.resources = options.resources;
+    }
+
+    if (!util.isUndefined(options.calendars) && options.calendars instanceof Array) {
+        team.calendars = options.calendars || [];
+    }
+
+    if (options.checked) {
+        team.checked = options.checked;
+    }
+
+    /**
+     * @event Base#updateTeam
+     */
+    this.fire('updateTeam');
+
+    return team;
 };
 
 /**
@@ -7411,8 +7727,32 @@ Base.prototype.updateResource = function(resource, options) {
         resource.name = options.name;
     }
 
-    if (!util.isUndefined(options.calendars) && options.calendars instanceof Array) {
-        resource.calendars = options.calendars || [];
+    if (!util.isUndefined(options.isPerson)) {
+        resource.isPerson = options.isPerson;
+    }
+
+    if (!util.isUndefined(options.bgColor)) {
+        resource.bgColor = options.bgColor;
+    }
+
+    if (options.color) {
+        resource.color = options.color;
+    }
+
+    if (options.dragBgColor) {
+        resource.dragBgColor = options.dragBgColor;
+    }
+
+    if (options.borderColor) {
+        resource.borderColor = options.borderColor;
+    }
+
+    if (!util.isUndefined(options.assignees) && options.assignees instanceof Array) {
+        resource.assignees = options.assignees || [];
+    }
+
+    if (!util.isUndefined(options.teams) && options.teams instanceof Array) {
+        resource.teams = options.teams || [];
     }
 
     if (options.checked) {
@@ -7425,6 +7765,48 @@ Base.prototype.updateResource = function(resource, options) {
     this.fire('updateResource');
 
     return resource;
+};
+
+/**
+ * Update a user.
+ * @emits Base#updateUser
+ * @param {User} user - user instance to update
+ * @param {object} options updated object data.
+ * @returns {User} updated user instance
+ */
+Base.prototype.updateUser = function(user, options) {
+    options = options || {};
+
+    if (!util.isUndefined(options.id)) {
+        user.id = options.id;
+    }
+
+    if (!util.isUndefined(options.remoteId)) {
+        user.remoteId = options.remoteId;
+    }
+
+    if (!util.isUndefined(options.resources) && options.resources instanceof Array) {
+        user.resources = options.resources;
+    }
+
+    if (!util.isUndefined(options.name)) {
+        user.name = options.name;
+    }
+
+    if (!util.isUndefined(options.email)) {
+        user.email = options.email;
+    }
+
+    if (!util.isUndefined(options.phone)) {
+        user.phone = options.phone;
+    }
+
+    /**
+     * @event Base#updateUser
+     */
+    this.fire('updateUser');
+
+    return user;
 };
 
 /**
@@ -7520,6 +7902,19 @@ Base.prototype.updateSchedule = function(schedule, options) {
 };
 
 /**
+ * Delete team instance from controller.
+ * @param {Team} team - team instance to delete
+ * @returns {Team} deleted model instance.
+ */
+Base.prototype.deleteTeam = function(team) {
+    this.teams = this.teams.filter(function(res) {
+        return res.id !== team.id;
+    });
+
+    return team;
+};
+
+/**
  * Delete resource instance from controller.
  * @param {Resource} resource - resource instance to delete
  * @returns {Resource} deleted model instance.
@@ -7530,6 +7925,19 @@ Base.prototype.deleteResource = function(resource) {
     });
 
     return resource;
+};
+
+/**
+ * Delete user instance from controller.
+ * @param {User} user - user instance to delete
+ * @returns {User} deleted model instance.
+ */
+Base.prototype.deleteUser = function(user) {
+    this.users = this.users.filter(function(res) {
+        return res.id !== user.id;
+    });
+
+    return user;
 };
 
 /**
@@ -7590,6 +7998,27 @@ Base.prototype._removeFromMatrix = function(schedule) {
 };
 
 /**
+ * Add a team instance.
+ * @emits Base#addedTeam
+ * @param {Team} team The instance of Team.
+ * @param {boolean} silent - set true then don't fire events.
+ * @returns {Team} The instance of Team that added.
+ */
+Base.prototype.addTeam = function(team, silent) {
+    this.teams.add(team);
+
+    if (!silent) {
+        /**
+         * @event Base#addedTeam
+         * @type {object}
+         */
+        this.fire('addedTeam', team);
+    }
+
+    return team;
+};
+
+/**
  * Add a resource instance.
  * @emits Base#addedResource
  * @param {Resource} resource The instance of Resource.
@@ -7608,6 +8037,27 @@ Base.prototype.addResource = function(resource, silent) {
     }
 
     return resource;
+};
+
+/**
+ * Add a user instance.
+ * @emits Base#addedUser
+ * @param {User} user The instance of User.
+ * @param {boolean} silent - set true then don't fire events.
+ * @returns {User} The instance of User that added.
+ */
+Base.prototype.addUser = function(user, silent) {
+    this.users.add(user);
+
+    if (!silent) {
+        /**
+         * @event Base#addedUser
+         * @type {object}
+         */
+        this.fire('addedUser', user);
+    }
+
+    return user;
 };
 
 /**
@@ -7746,11 +8196,27 @@ Base.prototype.setTheme = function(theme) {
 };
 
 /**
+ * Set team list
+ * @param {Array.<Team>} teams - team list
+ */
+Base.prototype.setTeams = function(teams) {
+    this.teams = teams;
+};
+
+/**
  * Set resource list
  * @param {Array.<Resource>} resources - resource list
  */
 Base.prototype.setResources = function(resources) {
     this.resources = resources;
+};
+
+/**
+ * Set user list
+ * @param {Array.<User>} users - user list
+ */
+Base.prototype.setUsers = function(users) {
+    this.users = users;
 };
 
 /**
@@ -9219,8 +9685,10 @@ function Calendar(container, options) {
      * @private
      */
     this._controller = _createController(options);
+    this._controller.setTeams(options.teams);
     this._controller.setCalendars(options.calendars);
     this._controller.setResources(options.resources);
+    this._controller.setUsers(options.users);
 
     /**
      * layout view (layout manager)
@@ -9271,6 +9739,20 @@ function Calendar(container, options) {
      * @private
      */
     this._openCreationPopup = null;
+
+    /**
+     * Open project creation (edit) popup
+     * @type {function}
+     * @private
+     */
+    this._openProjectCreationPopup = null;
+
+    /**
+     * Open team creation popup
+     * @type {function}
+     * @private
+     */
+    this._openTeamCreationPopup = null;
 
     /**
      * Open calendar creation popup
@@ -9505,6 +9987,34 @@ Calendar.prototype.updateSchedule = function(scheduleId, calendarId, changes, si
 };
 
 /**
+ * Update the team
+ * @param {string} teamId - ID of the original team to update
+ * @param {object} changes - The {@link Team} properties and values with changes to update
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ * @example
+ * calendar.updateTeam(team.id, {
+ *     title: 'Changed team',
+ * });
+ */
+Calendar.prototype.updateTeam = function(teamId, changes, silent) {
+    var ctrl = this._controller,
+        ownTeams = ctrl.teams,
+        team = ownTeams.filter(function(model) {
+            return model.id === teamId;
+        })[0];
+
+    if (!changes || !team) {
+        return;
+    }
+
+    ctrl.updateTeam(team, changes);
+
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
  * Update the calendar
  * @param {string} calendarId - ID of the original calendar to update
  * @param {object} changes - The {@link Calendar} properties and values with changes to update
@@ -9560,6 +10070,34 @@ Calendar.prototype.updateResource = function(resourceId, changes, silent) {
     }
 };
 
+/**
+ * Update the user
+ * @param {string} userId - ID of the original user to update
+ * @param {object} changes - The {@link User} properties and values with changes to update
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ * @example
+ * calendar.updateUser(user.id, {
+ *     title: 'Changed user',
+ * });
+ */
+Calendar.prototype.updateUser = function(userId, changes, silent) {
+    var ctrl = this._controller,
+        ownUsers = ctrl.users,
+        user = ownUsers.filter(function(model) {
+            return model.id === userId;
+        })[0];
+
+    if (!changes || !user) {
+        return;
+    }
+
+    ctrl.updateUser(user, changes);
+
+    if (!silent) {
+        this.render();
+    }
+};
+
 Calendar.prototype._hasChangedCalendar = function(schedule, changes) {
     return schedule &&
         changes.calendarId &&
@@ -9604,6 +10142,28 @@ Calendar.prototype.deleteSchedule = function(scheduleId, calendarId, silent) {
 };
 
 /**
+ * Delete a team.
+ * @param {string} teamId - ID of team to delete
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ */
+Calendar.prototype.deleteTeam = function(teamId, silent) {
+    var ctrl = this._controller,
+        ownTeams = ctrl.teams,
+        team = ownTeams.find(function(model) {
+            return model.id === teamId;
+        });
+
+    if (!team) {
+        return;
+    }
+
+    ctrl.deleteTeam(team);
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
  * Delete a calendar.
  * @param {string} calendarId - ID of calendar to delete
  * @param {boolean} [silent=false] - No auto render after creation when set true
@@ -9642,6 +10202,28 @@ Calendar.prototype.deleteResource = function(resourceId, silent) {
     }
 
     ctrl.deleteResource(resource);
+    if (!silent) {
+        this.render();
+    }
+};
+
+/**
+ * Delete a user.
+ * @param {string} userId - ID of user to delete
+ * @param {boolean} [silent=false] - No auto render after creation when set true
+ */
+Calendar.prototype.deleteUser = function(userId, silent) {
+    var ctrl = this._controller,
+        ownUsers = ctrl.users,
+        user = ownUsers.find(function(model) {
+            return model.id === userId;
+        });
+
+    if (!user) {
+        return;
+    }
+
+    ctrl.deleteUser(user);
     if (!silent) {
         this.render();
     }
@@ -10111,6 +10693,39 @@ Calendar.prototype._onCalendarClick = function(clickCalendarData) {
 
 /**
  * A bridge-based event handler for connecting a click handler to a user click event handler for each view
+ * @fires Calendar#clickTeam
+ * @param {object} clickTeamData - The event data of 'clickTeam' handler
+ * @private
+ */
+Calendar.prototype._onTeamClick = function(clickTeamData) {
+    /**
+     * Fire this event when click a team.
+     * @event Calendar#clickTeam
+     * @type {object}
+     * @property {Team} team - The {@link Team} instance
+     * @property {MouseEvent} event - MouseEvent
+     * @example
+     * calendar.on('clickTeam', function(event) {
+     *     var team = event.team;
+     *
+     *     if (lastClickTeam) {
+     *         calendar.updateTeam(lastClickTeam.id, lastClickTeam.calendarId, {
+     *             isFocused: false
+     *         });
+     *     }
+     *     calendar.updateTeam(team.id, team.calendarId, {
+     *         isFocused: true
+     *     });
+     *
+     *     lastClickTeam = team;
+     *     // open detail view
+     * });
+     */
+    this.fire('clickTeam', clickTeamData);
+};
+
+/**
+ * A bridge-based event handler for connecting a click handler to a user click event handler for each view
  * @fires Calendar#clickResource
  * @param {object} clickResourceData - The event data of 'clickResource' handler
  * @private
@@ -10187,7 +10802,51 @@ Calendar.prototype._onClickDayname = function(clickScheduleData) {
 };
 
 /**
- * @fires {Resource#n('beforeCreateResource', function}
+ * @fires {Team#('beforeCreateTeam', function}
+ * @param {object} createTeamData - select schedule data from allday, time
+ * @private
+ */
+Calendar.prototype._onBeforeTeamCreate = function(createTeamData) {
+    if (this._options.useCreationPopup && !createTeamData.useCreationPopup) {
+        if (this._showTeamCreationPopup) {
+            this._showTeamCreationPopup(createTeamData);
+
+            return;
+        }
+    }
+    /**
+     * Fire this event when select time period in daily, weekly, monthly.
+     * @event Team#beforeCreateTeam
+     * @type {object}
+     */
+    this.fire('beforeCreateTeam', createTeamData);
+};
+
+/**
+ * @fires Calendar#beforeUpdateTeam
+ * @param {object} updateTeamData - update {@link Team} data
+ * @private
+ */
+Calendar.prototype._onBeforeTeamUpdate = function(updateTeamData) {
+    /**
+     * Fire this event when we click on a team to change it.
+     * @event Team#beforeUpdateTeam
+     * @type {object}
+     * @property {Team} team - The original {@link Team} instance
+     * @property {object} changes - The {@link Team} properties and values with changes to update
+     * @example
+     * calendar.on('beforeUpdateTeam', function(event) {
+     *     var team = event.team;
+     *     var changes = event.changes;
+     *
+     *     team.updateTeam(team.id, changes);
+     * });
+     */
+    this.fire('beforeUpdateTeam', updateTeamData);
+};
+
+/**
+ * @fires {Resource#('beforeCreateResource', function}
  * @param {object} createResourceData - select schedule data from allday, time
  * @private
  */
@@ -10252,6 +10911,51 @@ Calendar.prototype._onBeforeCalendarCreate = function(createCalendarData) {
 };
 
 /**
+ * @fires Calendar#beforeUpdateProject
+ * @param {object} updateProjectData - update {@link Project} data
+ * @private
+ */
+Calendar.prototype._onBeforeProjectUpdate = function(updateProjectData) {
+    /**
+     * Fire this event when we click on a calendar to change it.
+     * @event Calendar#beforeUpdateProject
+     * @type {object}
+     * @property {Project} calendar - The original {@link Project} instance
+     * @property {object} changes - The {@link Project} properties and values with changes to update
+     * @example
+     * calendar.on('beforeUpdateProject', function(event) {
+     *     var calendar = event.calendar;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateProject(calendar.id, changes);
+     * });
+     */
+    this.fire('beforeUpdateProject', updateProjectData);
+};
+
+/**
+ * @fires Calendar#afterDisplayProjectEditWindow
+ * @param {object} updateProjectData - update {@link Project} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayProjectEditWindow = function(updateProjectData) {
+    /**
+     * Fire this event when we render our calendar creation popup.
+     * @event Calendar#afterDisplayProjectEditWindow
+     * @type {object}
+     * @property {Project} calendar - The original {@link Project} instance
+     * @example
+     * calendar.on('afterDisplayProjectEditWindow', function(event) {
+     *     var calendar = event.calendar;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateProject(calendar.id, changes);
+     * });
+     */
+    this.fire('afterDisplayProjectEditWindow', updateProjectData);
+};
+
+/**
  * @fires Calendar#beforeUpdateCalendar
  * @param {object} updateCalendarData - update {@link Calendar} data
  * @private
@@ -10272,6 +10976,72 @@ Calendar.prototype._onBeforeCalendarUpdate = function(updateCalendarData) {
      * });
      */
     this.fire('beforeUpdateCalendar', updateCalendarData);
+};
+
+/**
+ * @fires Calendar#beforeDisplayResourceEditWindow
+ * @param {object} updateResourceData - update {@link Resource} data
+ * @private
+ */
+Calendar.prototype._onBeforeDisplayResourceEditWindow = function(updateResourceData) {
+    /**
+     * Fire this event when we render our resource creation popup.
+     * @event Calendar#beforeDisplayResourceEditWindow
+     * @type {object}
+     * @property {Resource} resource - The original {@link Resource} instance
+     * @example
+     * calendar.on('beforeDisplayResourceEditWindow', function(event) {
+     *     var resource = event.resource;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateResource(resource.id, changes);
+     * });
+     */
+    this.fire('beforeDisplayResourceEditWindow', updateResourceData);
+};
+
+/**
+ * @fires Calendar#afterDisplayResourceEditWindow
+ * @param {object} updateResourceData - update {@link Resource} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayResourceEditWindow = function(updateResourceData) {
+    /**
+     * Fire this event when we render our resource creation popup.
+     * @event Calendar#afterDisplayResourceEditWindow
+     * @type {object}
+     * @property {Resource} resource - The original {@link Resource} instance
+     * @example
+     * calendar.on('afterDisplayResourceEditWindow', function(event) {
+     *     var resource = event.resource;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateResource(resource.id, changes);
+     * });
+     */
+    this.fire('afterDisplayResourceEditWindow', updateResourceData);
+};
+
+/**
+ * @fires Calendar#afterDisplayTeamEditWindow
+ * @param {object} updateTeamData - update {@link Team} data
+ * @private
+ */
+Calendar.prototype._onAfterDisplayTeamEditWindow = function(updateTeamData) {
+    /**
+     * Fire this event when we render our team creation popup.
+     * @event Calendar#afterDisplayTeamEditWindow
+     * @type {object}
+     * @property {Team} team - The original {@link Team} instance
+     * @example
+     * calendar.on('afterDisplayTeamEditWindow', function(event) {
+     *     var team = event.team;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateTeam(team.id, changes);
+     * });
+     */
+    this.fire('afterDisplayTeamEditWindow', updateTeamData);
 };
 
 /**
@@ -10419,6 +11189,26 @@ Calendar.prototype._onAfterUpdateScheduleCalendar = function(updateScheduleCalen
 };
 
 /**
+ * @fires Calendar#beforeDeleteTeam
+ * @param {object} deleteTeamData - delete team data
+ * @private
+ */
+Calendar.prototype._onBeforeTeamDelete = function(deleteTeamData) {
+    /**
+     * Fire this event when delete a team.
+     * @event Calendar#beforeDeleteTeam
+     * @type {object}
+     * @property {Team} team - The {@link Team} instance to delete
+     * @example
+     * calendar.on('beforeDeleteTeam', function(event) {
+     *     var team = event.team;
+     *     alert('The team is removed.', team);
+     * });
+     */
+    this.fire('beforeDeleteTeam', deleteTeamData);
+};
+
+/**
  * @fires Calendar#beforeDeleteResource
  * @param {object} deleteResourceData - delete resource data
  * @private
@@ -10533,6 +11323,7 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
     util.forEach(handler.click, function(clickHandler) {
         clickHandler[method]('clickSchedule', self._onClick, self);
         clickHandler[method]('clickCalendar', self._onCalendarClick, self);
+        clickHandler[method]('clickTeam', self._onTeamClick, self);
         clickHandler[method]('clickResource', self._onResourceClick, self);
     });
 
@@ -10541,8 +11332,15 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
     });
 
     util.forEach(handler.creation, function(creationHandler) {
+        creationHandler[method]('beforeUpdateProject', self._onBeforeProjectUpdate, self);
+        creationHandler[method]('beforeCreateTeam', self._onBeforeTeamCreate, self);
+        creationHandler[method]('beforeUpdateTeam', self._onBeforeTeamUpdate, self);
+        creationHandler[method]('afterDisplayTeamEditWindow', self._onAfterDisplayTeamEditWindow, self);
+        creationHandler[method]('beforeDeleteTeam', self._onBeforeTeamDelete, self);
         creationHandler[method]('beforeCreateResource', self._onBeforeResourceCreate, self);
         creationHandler[method]('beforeUpdateResource', self._onBeforeResourceUpdate, self);
+        creationHandler[method]('beforeDisplayResourceEditWindow', self._onBeforeDisplayResourceEditWindow, self);
+        creationHandler[method]('afterDisplayResourceEditWindow', self._onAfterDisplayResourceEditWindow, self);
         creationHandler[method]('beforeDeleteResource', self._onBeforeResourceDelete, self);
         creationHandler[method]('beforeCreateCalendar', self._onBeforeCalendarCreate, self);
         creationHandler[method]('beforeUpdateCalendar', self._onBeforeCalendarUpdate, self);
@@ -10662,12 +11460,16 @@ Calendar.prototype.changeView = function(newViewName, force) {
     this._refreshMethod = created.refresh;
     this._scrollToNowMethod = created.scrollToNow;
     this._openCreationPopup = created.openCreationPopup;
+    this._showProjectDetailPopup = created.showProjectDetailPopup;
     this._openCalendarCreationPopup = created.openCalendarCreationPopup;
     this._showCalendarDetailPopup = created.showCalendarDetailPopup;
+    this._openTeamCreationPopup = created.openTeamCreationPopup;
+    this._showTeamDetailPopup = created.showTeamDetailPopup;
     this._openResourceCreationPopup = created.openResourceCreationPopup;
     this._showResourceDetailPopup = created.showResourceDetailPopup;
     this._showCreationPopup = created.showCreationPopup;
     this._showCalendarCreationPopup = created.showCalendarCreationPopup;
+    this._showTeamCreationPopup = created.showTeamCreationPopup;
     this._showResourceCreationPopup = created.showResourceCreationPopup;
     this._hideMoreView = created.hideMoreView;
 
@@ -10824,6 +11626,14 @@ Calendar.prototype.getViewName = function() {
 };
 
 /**
+ * Set team list
+ * @param {Array.<TeamProps>} teams - {@link TeamProps} List
+ */
+Calendar.prototype.setTeams = function(teams) {
+    this._controller.setTeams(teams);
+};
+
+/**
  * Set calendar list
  * @param {Array.<CalendarProps>} calendars - {@link CalendarProps} List
  */
@@ -10843,6 +11653,44 @@ Calendar.prototype.setCalendars = function(calendars) {
  */
 Calendar.prototype.setResources = function(resources) {
     this._controller.setResources(resources);
+};
+
+/**
+ * Set user list
+ * @param {Array.<UserProps>} users - {@link UserProps} List
+ */
+Calendar.prototype.setUsers = function(users) {
+    this._controller.setUsers(users);
+};
+
+/**
+ * show project detail popup
+ * @param {event} eventData - The event data with project data
+ */
+Calendar.prototype.showProjectDetailPopup = function(eventData) {
+    if (this._showProjectDetailPopup) {
+        this._showProjectDetailPopup(eventData);
+    }
+};
+
+/**
+ * Open team creation popup
+ * @param {Team} team - The preset {@link Team} data
+ */
+Calendar.prototype.openTeamCreationPopup = function(team) {
+    if (this._openTeamCreationPopup) {
+        this._openTeamCreationPopup(team);
+    }
+};
+
+/**
+ * show team creation popup
+ * @param {event} eventData - The event data with teamId chosen in eventData.teamId
+ */
+Calendar.prototype.showTeamDetailPopup = function(eventData) {
+    if (this._showTeamDetailPopup) {
+        this._showTeamDetailPopup(eventData);
+    }
 };
 
 /**
@@ -11089,6 +11937,7 @@ var config = __webpack_require__(/*! ../config */ "./src/js/config.js"),
     MonthMove = __webpack_require__(/*! ../handler/month/move */ "./src/js/handler/month/move.js"),
     More = __webpack_require__(/*! ../view/month/more */ "./src/js/view/month/more.js"),
     CalendarCreationPopup = __webpack_require__(/*! ../view/popup/calendarCreationPopup */ "./src/js/view/popup/calendarCreationPopup.js"),
+    TeamCreationPopup = __webpack_require__(/*! ../view/popup/teamCreationPopup */ "./src/js/view/popup/teamCreationPopup.js"),
     ScheduleCreationPopup = __webpack_require__(/*! ../view/popup/scheduleCreationPopup */ "./src/js/view/popup/scheduleCreationPopup.js"),
     ScheduleDetailPopup = __webpack_require__(/*! ../view/popup/scheduleDetailPopup */ "./src/js/view/popup/scheduleDetailPopup.js"),
     Schedule = __webpack_require__(/*! ../model/schedule */ "./src/js/model/schedule.js");
@@ -11124,9 +11973,11 @@ function getViewModelForMoreLayer(date, target, schedules, daynames) {
  */
 function createMonthView(baseController, layoutContainer, dragHandler, options) {
     var monthViewContainer, monthView, moreView, createView, createCalendarView;
-    var clickHandler, creationHandler, resizeHandler, moveHandler, clearSchedulesHandler, onUpdateSchedule;
-    var onShowCreationPopup, onSaveNewSchedule, onShowEditPopup;
+    var createTeamView, clickHandler, creationHandler, resizeHandler;
+    var moveHandler, clearSchedulesHandler, onUpdateSchedule, onEditCalendar;
+    var onShowCreationPopup, onSaveNewSchedule, onSaveNewTeam, onShowEditPopup;
     var detailView, onShowDetailPopup, onDeleteSchedule, onEditSchedule;
+    var onEditTeam;
 
     monthViewContainer = domutil.appendHTMLElement(
         'div', layoutContainer, config.classname('month'));
@@ -11188,7 +12039,10 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
     // binding popup for schedules creation
     if (options.useCreationPopup) {
-        createView = new ScheduleCreationPopup(layoutContainer, baseController.calendars, options.usageStatistics);
+        createView = new ScheduleCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
+        createTeamView = new TeamCreationPopup(
+            layoutContainer, baseController.calendars, options.usageStatistics);
         createCalendarView = new CalendarCreationPopup(
             layoutContainer, baseController.calendars, options.usageStatistics);
 
@@ -11200,6 +12054,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
         createView.on('beforeCreateCalendar', onSaveNewSchedule);
+        createView.on('beforeCreateTeam', onSaveNewTeam);
     }
 
     // binding popup for schedule detail
@@ -11236,7 +12091,8 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
                 createView.render(eventData);
             };
             createView.on('beforeUpdateSchedule', onEditSchedule);
-            createView.on('beforeUpdateCalendar', onEditSchedule);
+            createView.on('beforeUpdateCalendar', onEditCalendar);
+            createView.on('beforeUpdateTeam', onEditTeam);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
@@ -11316,6 +12172,11 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         refresh: function() {
             monthView.vLayout.refresh();
         },
+        openTeamCreationPopup: function() {
+            if (createTeamView && creationHandler) {
+                creationHandler.invokeTeamCreationClick();
+            }
+        },
         openCalendarCreationPopup: function() {
             if (createCalendarView && creationHandler) {
                 creationHandler.invokeCalendarCreationClick();
@@ -11373,10 +12234,14 @@ var Week = __webpack_require__(/*! ../view/week/week */ "./src/js/view/week/week
 var DayName = __webpack_require__(/*! ../view/week/dayname */ "./src/js/view/week/dayname.js");
 var DayGrid = __webpack_require__(/*! ../view/week/dayGrid */ "./src/js/view/week/dayGrid.js");
 var TimeGrid = __webpack_require__(/*! ../view/week/timeGrid */ "./src/js/view/week/timeGrid.js");
+var ProjectCreationPopup = __webpack_require__(/*! ../view/popup/projectCreationPopup */ "./src/js/view/popup/projectCreationPopup.js");
 var ResourceCreationPopup = __webpack_require__(/*! ../view/popup/resourceCreationPopup */ "./src/js/view/popup/resourceCreationPopup.js");
+var TeamCreationPopup = __webpack_require__(/*! ../view/popup/teamCreationPopup */ "./src/js/view/popup/teamCreationPopup.js");
 var CalendarCreationPopup = __webpack_require__(/*! ../view/popup/calendarCreationPopup */ "./src/js/view/popup/calendarCreationPopup.js");
 var ScheduleCreationPopup = __webpack_require__(/*! ../view/popup/scheduleCreationPopup */ "./src/js/view/popup/scheduleCreationPopup.js");
+var ProjectDetailPopup = __webpack_require__(/*! ../view/popup/projectDetailPopup */ "./src/js/view/popup/projectDetailPopup.js");
 var ScheduleDetailPopup = __webpack_require__(/*! ../view/popup/scheduleDetailPopup */ "./src/js/view/popup/scheduleDetailPopup.js");
+var TeamDetailPopup = __webpack_require__(/*! ../view/popup/teamDetailPopup */ "./src/js/view/popup/teamDetailPopup.js");
 var CalendarDetailPopup = __webpack_require__(/*! ../view/popup/calendarDetailPopup */ "./src/js/view/popup/calendarDetailPopup.js");
 var ResourceDetailPopup = __webpack_require__(/*! ../view/popup/resourceDetailPopup */ "./src/js/view/popup/resourceDetailPopup.js");
 
@@ -11448,12 +12313,18 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     var panels = [],
         vpanels = [];
     var weekView, dayNameContainer, dayNameView, vLayoutContainer, vLayout;
-    var createView, createCalendarView, createResourceView, onSaveNewSchedule, onSaveNewCalendar;
-    var onSaveNewResource, onSetCalendars, lastVPanel;
-    var detailView, detailCalendarView, detailResourceView, onShowDetailPopup, onShowCalendarDetailPopup;
-    var onShowResourceDetailPopup, onDeleteSchedule, onDeleteCalendar, onDeleteResource, onShowEditPopup;
-    var onShowCalendarEditPopup, onShowResourceEditPopup, onEditSchedule, onEditCalendar;
-    var onDisplayEditSchedule, onDisplayEditCalendar, onUpdateScheduleCalendar, onEditResource;
+    var createProjectView, onDisplayEditProject, onBeforeDisplayEditResource;
+    var createView, createCalendarView, createTeamView, createResourceView;
+    var onSaveNewSchedule, onSaveNewCalendar, onSaveNewTeam, onSaveNewResource;
+    var onSetCalendars, lastVPanel, onShowProjectDetailPopup, onDisplayEditTeam;
+    var onDisplayEditResource, onEditProject, onShowProjectEditPopup;
+    var detailProjectView, detailView, detailCalendarView, detailResourceView;
+    var detailTeamView, onShowTeamEditPopup, onShowTeamDetailPopup;
+    var onShowDetailPopup, onShowCalendarDetailPopup, onShowResourceDetailPopup;
+    var onDeleteSchedule, onDeleteCalendar, onDeleteTeam, onDeleteResource;
+    var onShowEditPopup, onShowCalendarEditPopup, onShowResourceEditPopup;
+    var onEditSchedule, onEditCalendar, onEditTeam, onDisplayEditSchedule;
+    var onDisplayEditCalendar, onUpdateScheduleCalendar, onEditResource;
     var taskView = options.taskView;
     var scheduleView = options.scheduleView;
     var viewVisibilities = {
@@ -11596,12 +12467,20 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
     // binding create schedules event
     if (options.useCreationPopup) {
+        createProjectView = new ProjectCreationPopup(
+            layoutContainer, options.usageStatistics);
         createView = new ScheduleCreationPopup(
-            layoutContainer, baseController.calendars, baseController.resources, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
+        createTeamView = new TeamCreationPopup(
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
         createCalendarView = new CalendarCreationPopup(
-            layoutContainer, baseController.calendars, baseController.resources, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
         createResourceView = new ResourceCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             util.extend(scheduleData, {
@@ -11612,6 +12491,13 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             } else {
                 weekView.handler.creation.time.fire('beforeCreateSchedule', scheduleData);
             }
+        };
+
+        onSaveNewTeam = function(teamData) {
+            util.extend(teamData, {
+                useCreationPopup: true
+            });
+            weekView.handler.creation.allday.fire('beforeCreateTeam', teamData);
         };
 
         onSaveNewCalendar = function(calendarData) {
@@ -11629,13 +12515,18 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         };
 
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
+        createTeamView.on('beforeCreateTeam', onSaveNewTeam);
         createCalendarView.on('beforeCreateCalendar', onSaveNewCalendar);
         createResourceView.on('beforeCreateResource', onSaveNewResource);
     }
 
+    // TODO: onSetResources/Teams?
     onSetCalendars = function(calendars) {
         if (createView) {
             createView.setCalendars(calendars);
+        }
+        if (createTeamView) {
+            createTeamView.setCalendars(calendars);
         }
         if (createCalendarView) {
             createCalendarView.setCalendars(calendars);
@@ -11649,21 +12540,25 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
     // binding popup for schedule detail
     if (options.useDetailPopup) {
+        detailProjectView = new ProjectDetailPopup(layoutContainer, baseController.calendars);
         detailView = new ScheduleDetailPopup(layoutContainer, baseController.calendars);
+        detailTeamView = new TeamDetailPopup(layoutContainer, baseController.resources);
         detailCalendarView = new CalendarDetailPopup(layoutContainer, baseController.calendars);
-        detailResourceView = new ResourceDetailPopup(layoutContainer, baseController.calendars);
+        detailResourceView = new ResourceDetailPopup(layoutContainer);
 
         onShowDetailPopup = function(eventData) {
             var scheduleId = eventData.schedule.calendarId;
-            var resourceIds;
+            var resourceIds = eventData.schedule.attendees || [];
             eventData.calendar = common.find(baseController.calendars, function(calendar) {
                 return calendar.id === scheduleId;
             });
 
-            resourceIds = eventData.schedule.attendees || [];
             eventData.attendees = baseController.resources.filter(function(res) {
                 return resourceIds.includes(res.id);
             });
+            eventData.attendees.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
 
             if (options.isReadOnly) {
                 eventData.schedule = util.extend({}, eventData.schedule, {isReadOnly: true});
@@ -11671,30 +12566,61 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
 
             detailView.render(eventData);
         };
-        onShowCalendarDetailPopup = function(eventData) {
+        onShowProjectDetailPopup = function(eventData) {
+            detailProjectView.render(eventData);
+        };
+        onShowTeamDetailPopup = function(eventData) {
             var calendarId = eventData.calendarId;
+            var teamId = eventData.teamId;
             var resourceIds;
+
+            eventData.team = common.find(baseController.teams, function(team) {
+                return team.id === teamId;
+            });
+
+            resourceIds = eventData.team.resources || [];
+
             eventData.calendar = common.find(baseController.calendars, function(calendar) {
                 return calendar.id === calendarId;
             });
 
-            resourceIds = eventData.calendar.resources || [];
             eventData.resources = baseController.resources.filter(function(res) {
                 return resourceIds.includes(res.id);
             });
+            eventData.resources.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
+
+            detailTeamView.render(eventData);
+        };
+        onShowCalendarDetailPopup = function(eventData) {
+            var calendarId = eventData.calendarId;
+            // var resourceIds = eventData.calendar.resources || [];
+            eventData.calendar = common.find(baseController.calendars, function(calendar) {
+                return calendar.id === calendarId;
+            });
+
+            // eventData.resources = baseController.resources.filter(function(res) {
+            //     return resourceIds.includes(res.id);
+            // });
 
             detailCalendarView.render(eventData);
         };
         onShowResourceDetailPopup = function(eventData) {
             var resourceId = eventData.resourceId;
-            var calendarIds;
+            var teamIds, resourceIds;
             eventData.resource = common.find(baseController.resources, function(resource) {
                 return resource.id === resourceId;
             });
 
-            calendarIds = eventData.resource.calendars || [];
-            eventData.calendars = baseController.calendars.filter(function(cal) {
-                return calendarIds.includes(cal.id);
+            resourceIds = eventData.resource.assignees || [];
+            teamIds = eventData.resource.teams || [];
+            eventData.teams = baseController.teams.filter(function(team) {
+                return teamIds.includes(team.id);
+            });
+
+            eventData.assignees = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
             });
 
             detailResourceView.render(eventData);
@@ -11705,6 +12631,9 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             } else {
                 weekView.handler.creation.time.fire('beforeDeleteSchedule', eventData);
             }
+        };
+        onDeleteTeam = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeDeleteTeam', eventData);
         };
         onDeleteCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('beforeDeleteCalendar', eventData);
@@ -11719,6 +12648,12 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 weekView.handler.move.time.fire('beforeUpdateSchedule', eventData);
             }
         };
+        onEditProject = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeUpdateProject', eventData);
+        };
+        onEditTeam = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeUpdateTeam', eventData);
+        };
         onEditCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('beforeUpdateCalendar', eventData);
         };
@@ -11728,8 +12663,20 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         onUpdateScheduleCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('afterUpdateScheduleCalendar', eventData);
         };
+        onDisplayEditTeam = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayTeamEditWindow', eventData);
+        };
+        onDisplayEditProject = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayProjectEditWindow', eventData);
+        };
         onDisplayEditCalendar = function(eventData) {
             weekView.handler.creation.allday.fire('afterDisplayCalendarEditWindow', eventData);
+        };
+        onDisplayEditResource = function(eventData) {
+            weekView.handler.creation.allday.fire('afterDisplayResourceEditWindow', eventData);
+        };
+        onBeforeDisplayEditResource = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeDisplayResourceEditWindow', eventData);
         };
         onEditResource = function(eventData) {
             weekView.handler.creation.allday.fire('beforeUpdateResource', eventData);
@@ -11750,6 +12697,24 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             createView.on('afterUpdateScheduleCalendar', onUpdateScheduleCalendar);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
 
+            onShowProjectEditPopup = function(eventData) {
+                eventData.isEditMode = true;
+                createProjectView.render(eventData);
+            };
+            createProjectView.on('beforeUpdateProject', onEditProject);
+            createProjectView.on('afterDisplayProjectEditWindow', onDisplayEditProject);
+            detailProjectView.on('beforeUpdateProject', onShowProjectEditPopup);
+
+            onShowTeamEditPopup = function(eventData) {
+                var resources = baseController.resources;
+                eventData.isEditMode = true;
+                createTeamView.setResources(resources);
+                createTeamView.render(eventData);
+            };
+            createTeamView.on('beforeUpdateTeam', onEditTeam);
+            createTeamView.on('afterDisplayTeamEditWindow', onDisplayEditTeam);
+            detailTeamView.on('beforeUpdateTeam', onShowTeamEditPopup);
+
             onShowCalendarEditPopup = function(eventData) {
                 var calendars = baseController.calendars;
                 eventData.isEditMode = true;
@@ -11761,19 +12726,23 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             detailCalendarView.on('beforeUpdateCalendar', onShowCalendarEditPopup);
 
             onShowResourceEditPopup = function(eventData) {
-                var calendars = baseController.calendars;
+                var teams = baseController.teams;
                 eventData.isEditMode = true;
-                createResourceView.setCalendars(calendars);
+                createResourceView.setTeams(teams);
                 createResourceView.render(eventData);
             };
             createResourceView.on('beforeUpdateResource', onEditResource);
+            createResourceView.on('afterDisplayResourceEditWindow', onDisplayEditResource);
+            detailResourceView.on('beforeDisplayResourceEditWindow', onBeforeDisplayEditResource);
             detailResourceView.on('beforeUpdateResource', onShowResourceEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
+            detailTeamView.on('beforeUpdateTeam', onEditTeam);
             detailCalendarView.on('beforeUpdateCalendar', onEditCalendar);
             detailResourceView.on('beforeUpdateResource', onEditResource);
         }
         detailView.on('beforeDeleteSchedule', onDeleteSchedule);
+        detailTeamView.on('beforeDeleteTeam', onDeleteTeam);
         detailCalendarView.on('beforeDeleteCalendar', onDeleteCalendar);
         detailResourceView.on('beforeDeleteResource', onDeleteResource);
     }
@@ -11797,6 +12766,11 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (options.useCreationPopup) {
             createResourceView.off('beforeCreateResource', onSaveNewResource);
             createResourceView.destroy();
+        }
+
+        if (options.useCreationPopup) {
+            createTeamView.off('beforeCreateTeam', onSaveNewTeam);
+            createTeamView.destroy();
         }
 
         if (options.useCreationPopup) {
@@ -11862,6 +12836,22 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
                 onShowResourceDetailPopup(resource);
             }
         },
+        openTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                weekView.handler.creation.allday.invokeTeamCreationClick(team);
+            }
+        },
+        showTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                createTeamView.render(team);
+            }
+        },
+        showTeamDetailPopup: function(team) {
+            if (onShowTeamDetailPopup) {
+                team.guide = weekView.handler.creation.allday.guide;
+                onShowTeamDetailPopup(team);
+            }
+        },
         openCalendarCreationPopup: function(calendar) {
             if (createCalendarView) {
                 weekView.handler.creation.allday.invokeCalendarCreationClick(calendar);
@@ -11876,6 +12866,22 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             if (onShowCalendarDetailPopup) {
                 calendar.guide = weekView.handler.creation.allday.guide;
                 onShowCalendarDetailPopup(calendar);
+            }
+        },
+        openProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                weekView.handler.creation.allday.invokeProjectCreationClick(project);
+            }
+        },
+        showProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                createProjectView.render(project);
+            }
+        },
+        showProjectDetailPopup: function(project) {
+            if (onShowProjectDetailPopup) {
+                project.guide = weekView.handler.creation.allday.guide;
+                onShowProjectDetailPopup(project);
             }
         },
         openCreationPopup: function(schedule) {
@@ -12349,6 +13355,24 @@ DayGridCreation.prototype.checkExpectedCondition = function(target) {
 };
 
 /**
+ * Request team model creation to controller by custom team.
+ * @fires {DayGridCreation#beforeCreateTeam}
+ * @param {object} teamData - team data from DayGridCreation module.
+ */
+DayGridCreation.prototype._createTeam = function(teamData) {
+    /**
+     * @event {DayGridCreation#beforeCreateTeam}
+     * @type {object}
+     * @property {DayGridCreationGuide} guide - DayGridCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var teamViewModelData = teamData;
+    teamViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateTeam', teamViewModelData);
+};
+
+/**
  * Request resource model creation to controller by custom resource.
  * @fires {DayGridCreation#beforeCreateResource}
  * @param {object} resourceData - resource data from DayGridCreation module.
@@ -12578,6 +13602,20 @@ DayGridCreation.prototype._onDblClick = function(clickEventData) {
     this._createSchedule(scheduleData);
 
     this._requestOnClick = false;
+};
+
+/**
+ * Invoke creation click
+ * @param {Team} team - team instance
+ */
+DayGridCreation.prototype.invokeTeamCreationClick = function(team) {
+    var teamData;
+
+    teamData = team;
+
+    // this.fire('click', teamData);
+
+    this._createTeam(teamData);
 };
 
 /**
@@ -13869,7 +14907,9 @@ function Drag(options, container) {
 
     this.options = util.extend({
         distance: 10,
-        exclude: null
+        exclude: function(item) {
+          return item.classList.contains('tui-full-calendar-dayname');
+        }
     }, options);
 
     /**
@@ -21558,28 +22598,31 @@ module.exports = CalendarDetailPopup;
 
 /***/ }),
 
-/***/ "./src/js/view/popup/resourceCreationPopup.js":
-/*!****************************************************!*\
-  !*** ./src/js/view/popup/resourceCreationPopup.js ***!
-  \****************************************************/
+/***/ "./src/js/view/popup/projectCreationPopup.js":
+/*!***************************************************!*\
+  !*** ./src/js/view/popup/projectCreationPopup.js ***!
+  \***************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 /**
- * @fileoverview Floating layer for writing new calendars
- * @author NHN FE Development Lab <dl_javascript@nhn.com>
+ * @fileoverview Floating layer for updaing projects
+ * @author IndieTools
  */
 
 
 var View = __webpack_require__(/*! ../../view/view */ "./src/js/view/view.js");
 var FloatingLayer = __webpack_require__(/*! ../../common/floatingLayer */ "./src/js/common/floatingLayer.js");
 var util = __webpack_require__(/*! tui-code-snippet */ "tui-code-snippet");
+var DatePicker = __webpack_require__(/*! tui-date-picker */ "tui-date-picker");
+var timezone = __webpack_require__(/*! ../../common/timezone */ "./src/js/common/timezone.js");
 var config = __webpack_require__(/*! ../../config */ "./src/js/config.js");
 var domevent = __webpack_require__(/*! ../../common/domevent */ "./src/js/common/domevent.js");
+var colorutil = __webpack_require__(/*! ../../common/colorutil */ "./src/js/common/colorutil.js");
 var domutil = __webpack_require__(/*! ../../common/domutil */ "./src/js/common/domutil.js");
-var common = __webpack_require__(/*! ../../common/common */ "./src/js/common/common.js");
-var tmpl = __webpack_require__(/*! ../template/popup/resourceCreationPopup.hbs */ "./src/js/view/template/popup/resourceCreationPopup.hbs");
+var tmpl = __webpack_require__(/*! ../template/popup/projectCreationPopup.hbs */ "./src/js/view/template/popup/projectCreationPopup.hbs");
+var TZDate = timezone.Date;
 var MAX_WEEK_OF_MONTH = 6;
 var ARROW_WIDTH_HALF = 8;
 
@@ -21587,10 +22630,9 @@ var ARROW_WIDTH_HALF = 8;
  * @constructor
  * @extends {View}
  * @param {HTMLElement} container - container element
- * @param {Array.<Calendar>} calendars - calendar list used to create new calendar
  * @param {boolean} usageStatistics - GA tracking options in Calendar
  */
-function ResourceCreationPopup(container, calendars, usageStatistics) {
+function ProjectCreationPopup(container, usageStatistics) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -21602,16 +22644,727 @@ function ResourceCreationPopup(container, calendars, usageStatistics) {
      * @type {object}
      */
     this._viewModel = null;
-    this._selectedCals = [];
-    this._resource = null;
-    this.calendars = calendars;
-    this._focusedSelect = null;
+    this._selectedCal = null;
+    this._project = null;
+    this._focusedDropdown = null;
     this._usageStatistics = usageStatistics;
     this._onClickListeners = [
+        this._closePopup.bind(this),
+        this._onClickSaveProject.bind(this)
+    ];
+
+    domevent.on(container, 'click', this._onClick, this);
+}
+
+util.inherit(ProjectCreationPopup, View);
+
+/**
+ * Mousedown event handler for hiding popup layer when user mousedown outside of
+ * layer
+ * @param {MouseEvent} mouseDownEvent - mouse event object
+ */
+ProjectCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
+    var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
+        popupLayer = domutil.closest(target, config.classname('.floating-layer'));
+
+    if (popupLayer) {
+        return;
+    }
+
+    this.hide();
+};
+
+/**
+ * @override
+ */
+ProjectCreationPopup.prototype.destroy = function() {
+    this.layer.destroy();
+    this.layer = null;
+    domevent.off(this.container, 'click', this._onClick, this);
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+    View.prototype.destroy.call(this);
+};
+
+/**
+ * @override
+ * Click event handler for close button
+ * @param {MouseEvent} clickEvent - mouse event object
+ */
+ProjectCreationPopup.prototype._onClick = function(clickEvent) {
+    var target = (clickEvent.target || clickEvent.srcElement);
+
+    util.forEach(this._onClickListeners, function(listener) {
+        return !listener(target);
+    });
+};
+
+/**
+ * Test click event target is close button, and return layer is closed(hidden)
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether popup layer is closed or not
+ */
+ProjectCreationPopup.prototype._closePopup = function(target) {
+    var className = config.classname('popup-close');
+
+    if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
+        this.hide();
+
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * Save new projectndar if user clicked save button
+ * @emits ProjectCreationPopup#saveProject
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether save button is clicked or not
+ */
+ProjectCreationPopup.prototype._onClickSaveProject = function(target) {
+    var className = config.classname('project-popup-save');
+    var cssPrefix = config.cssPrefix;
+    var name, description, bgColor, startDate, endDate, changes;
+
+    if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
+        return false;
+    }
+
+    name = domutil.get(cssPrefix + 'project-name');
+    description = domutil.get(cssPrefix + 'project-description');
+    bgColor = domutil.get(cssPrefix + 'project-color-input');
+    // TODO: When we meaningfully handle timezones, we'll need to convert again.
+    startDate = new TZDate(this.rangePicker.getStartDate()); // .toLocalTime();
+    endDate = new TZDate(this.rangePicker.getEndDate()); // .toLocalTime();
+
+    if (!name.value) {
+        name.focus();
+        name.parentElement.style.border = '1px solid red';
+
+        return true;
+    }
+
+    if (!bgColor.value) {
+        // TODO: Also check for value repeated in other places.
+        bgColor.focus();
+        bgColor.parentElement.style.border = '1px solid red';
+
+        return true;
+    }
+
+    if (!startDate || !endDate) {
+        return true;
+    }
+
+    if (this._isEditMode) {
+        changes = {
+            name: name.value,
+            description: description.value,
+            bgColor: bgColor.value,
+            color: colorutil.determineTextforBackground(bgColor.value),
+            dragBgColor: bgColor.value,
+            borderColor: bgColor.value,
+            startDate: startDate,
+            endDate: endDate
+        };
+
+        this.fire('beforeUpdateProject', {
+            project: this._project,
+            changes: changes
+        });
+    }
+
+    this.hide();
+
+    return true;
+};
+
+/**
+ * @override
+ * @param {object} viewModel - view model from factory/monthView
+ */
+ProjectCreationPopup.prototype.render = function(viewModel) {
+    var layer = this.layer;
+    var self = this;
+    var boxElement, guideElements;
+
+    viewModel.zIndex = this.layer.zIndex + 5;
+    this._isEditMode = true; // viewModel.project;
+
+    if (viewModel.trigger) {
+        boxElement = viewModel.trigger;
+    } else {
+        this.guide = viewModel.guide;
+        guideElements = this._getGuideElements(this.guide);
+        boxElement = guideElements.length ? guideElements[0] : null;
+    }
+
+    if (this._isEditMode) {
+        viewModel.name = viewModel.project.name;
+        viewModel.description = viewModel.project.description;
+        viewModel.bgColor = viewModel.project.bgColor;
+        viewModel.startDate = viewModel.project.start_date;
+        viewModel.endDate = viewModel.project.end_date;
+    }
+
+    layer.setContent(tmpl(viewModel));
+    this._createDatepicker(viewModel.startDate, viewModel.endDate, true);
+    layer.show();
+
+    if (boxElement) {
+        this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
+    }
+
+    util.debounce(function() {
+        domevent.on(document.body, 'mousedown', self._onMouseDown, self);
+    })();
+
+    this.fire('afterDisplayProjectEditWindow', {
+        project: this._project
+    });
+};
+
+/**
+ * Set popup position and arrow direction to apear near guide element
+ * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
+ */
+ProjectCreationPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+    var layer = domutil.find(config.classname('.popup'), this.layer.container);
+    var layerSize = {
+        width: layer.offsetWidth,
+        height: layer.offsetHeight
+    };
+    var windowSize = {
+        right: window.innerWidth,
+        bottom: window.innerHeight
+    };
+    var parentRect = this.layer.parent.getBoundingClientRect();
+    var parentBounds = {
+        left: parentRect.left,
+        top: parentRect.top
+    };
+    var pos;
+
+    pos = this._calcRenderingData(layerSize, windowSize, guideBound);
+    pos.x -= parentBounds.left;
+    pos.y -= (parentBounds.top + 6);
+    this.layer.setPosition(pos.x, pos.y);
+    this._setArrowDirection(pos.arrow);
+};
+
+/**
+ * Get guide elements from creation guide object
+ * It is used to calculate rendering position of popup
+ * It will be disappeared when hiding popup
+ * @param {MonthCreationGuide|TimeCreationGuide|AlldayCreationGuide} guide - creation guide
+ * @returns {Array.<HTMLElement>} creation guide element
+ */
+ProjectCreationPopup.prototype._getGuideElements = function(guide) {
+    var guideElements = [];
+    var i = 0;
+
+    if (guide.guideElement) {
+        guideElements.push(guide.guideElement);
+    } else if (guide.guideElements) {
+        for (; i < MAX_WEEK_OF_MONTH; i += 1) {
+            if (guide.guideElements[i]) {
+                guideElements.push(guide.guideElements[i]);
+            }
+        }
+    }
+
+    return guideElements;
+};
+
+/**
+ * Get guide element's bound data which only includes top, right, bottom, left
+ * @param {Array.<HTMLElement>} guideElements - creation guide elements
+ * @returns {Object} - popup bound data
+ */
+ProjectCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guideElements) {
+    var bound;
+
+    if (!guideElements.length) {
+        return null;
+    }
+
+    bound = guideElements[0].getBoundingClientRect();
+
+    return {
+        top: bound.top,
+        left: bound.left,
+        bottom: bound.bottom,
+        right: bound.right
+    };
+};
+
+/**
+ * Calculate rendering position usering guide elements
+ * @param {{width: {number}, height: {number}}} layerSize - popup layer's width and height
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} parentSize - width and height of the upper layer, that acts as a border of popup
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
+ * @returns {PopupRenderingData} rendering position of popup and popup arrow
+ */
+ProjectCreationPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+    var guideHorizontalCenter = (guideBound.left + guideBound.right) / 2;
+    var x = guideHorizontalCenter - (layerSize.width / 2);
+    var y = guideBound.top - layerSize.height + 3;
+    var arrowDirection = 'arrow-bottom';
+    var arrowLeft;
+
+    if (y < 0) {
+        y = guideBound.bottom + 9;
+        arrowDirection = 'arrow-top';
+    }
+
+    if (x > 0 && (x + layerSize.width > parentSize.right)) {
+        x = parentSize.right - layerSize.width;
+    }
+
+    if (x < 0) {
+        x = 0;
+    }
+
+    if (guideHorizontalCenter - x !== layerSize.width / 2) {
+        arrowLeft = guideHorizontalCenter - x - ARROW_WIDTH_HALF;
+    }
+
+    /**
+     * @typedef {Object} PopupRenderingData
+     * @property {number} x - left position
+     * @property {number} y - top position
+     * @property {string} arrow.direction - direction of popup arrow
+     * @property {number} [arrow.position] - relative position of popup arrow, if it is not set, arrow appears on the middle of popup
+     */
+    return {
+        x: x,
+        y: y,
+        arrow: {
+            direction: arrowDirection,
+            position: arrowLeft
+        }
+    };
+};
+
+/**
+ * Set arrow's direction and position
+ * @param {Object} arrow rendering data for popup arrow
+ */
+ProjectCreationPopup.prototype._setArrowDirection = function(arrow) {
+    var direction = arrow.direction || 'arrow-bottom';
+    var arrowEl = domutil.get(config.classname('popup-arrow'));
+    var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
+
+    if (direction !== config.classname('arrow-bottom')) {
+        domutil.removeClass(arrowEl, config.classname('arrow-bottom'));
+        domutil.addClass(arrowEl, config.classname(direction));
+    }
+
+    if (arrow.position) {
+        borderElement.style.left = arrow.position + 'px';
+    }
+};
+
+/**
+ * Create date range picker using start date and end date
+ * @param {TZDate} start - start date
+ * @param {TZDate} end - end date
+ */
+ProjectCreationPopup.prototype._createDatepicker = function(start, end) {
+    var cssPrefix = config.cssPrefix;
+
+    this.rangePicker = DatePicker.createRangePicker({
+        startpicker: {
+            date: new TZDate(start).toDate(),
+            input: '#' + cssPrefix + 'project-start-date',
+            container: '#' + cssPrefix + 'startpicker-container'
+        },
+        endpicker: {
+            date: new TZDate(end).toDate(),
+            input: '#' + cssPrefix + 'project-end-date',
+            container: '#' + cssPrefix + 'endpicker-container'
+        },
+        format: 'yyyy-MM-dd',
+        timepicker: null,
+        usageStatistics: false
+    });
+};
+
+/**
+ * Hide layer
+ */
+ProjectCreationPopup.prototype.hide = function() {
+    this.layer.hide();
+
+    if (this.guide) {
+        this.guide.clearGuideElement();
+        this.guide = null;
+    }
+
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+};
+
+/**
+ * refresh layer
+ */
+ProjectCreationPopup.prototype.refresh = function() {
+    if (this._viewModel) {
+        this.layer.setContent(this.tmpl(this._viewModel));
+    }
+};
+
+module.exports = ProjectCreationPopup;
+
+
+/***/ }),
+
+/***/ "./src/js/view/popup/projectDetailPopup.js":
+/*!*************************************************!*\
+  !*** ./src/js/view/popup/projectDetailPopup.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/**
+ * @fileoverview Floating layer for  showing detail project
+ * @author NHN FE Development Lab <dl_javascript@nhn.com>
+ */
+
+
+var View = __webpack_require__(/*! ../../view/view */ "./src/js/view/view.js");
+var FloatingLayer = __webpack_require__(/*! ../../common/floatingLayer */ "./src/js/common/floatingLayer.js");
+var util = __webpack_require__(/*! tui-code-snippet */ "tui-code-snippet");
+var config = __webpack_require__(/*! ../../config */ "./src/js/config.js"),
+    domevent = __webpack_require__(/*! ../../common/domevent */ "./src/js/common/domevent.js"),
+    domutil = __webpack_require__(/*! ../../common/domutil */ "./src/js/common/domutil.js");
+var tmpl = __webpack_require__(/*! ../template/popup/projectDetailPopup.hbs */ "./src/js/view/template/popup/projectDetailPopup.hbs");
+var ARROW_WIDTH_HALF = 8;
+
+/**
+ * @constructor
+ * @extends {View}
+ * @param {HTMLElement} container - container element
+ */
+function ProjectDetailPopup(container) {
+    View.call(this, container);
+    /**
+     * @type {FloatingLayer}
+     */
+    this.layer = new FloatingLayer(null, container);
+
+    /**
+     * cached view model
+     * @type {object}
+     */
+    this._viewModel = null;
+    this._project = null;
+    this._resources = null;
+
+    domevent.on(container, 'click', this._onClick, this);
+}
+
+util.inherit(ProjectDetailPopup, View);
+
+/**
+ * Mousedown event handler for hiding popup layer when user mousedown outside of
+ * layer
+ * @param {MouseEvent} mouseDownEvent - mouse event object
+ */
+ProjectDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
+    var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
+        popupLayer = domutil.closest(target, config.classname('.floating-layer'));
+
+    if (popupLayer) {
+        return;
+    }
+
+    this.hide();
+};
+
+/**
+ * @override
+ */
+ProjectDetailPopup.prototype.destroy = function() {
+    this.layer.destroy();
+    this.layer = null;
+    domevent.off(this.container, 'click', this._onClick, this);
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+    View.prototype.destroy.call(this);
+};
+
+/**
+ * @override
+ * Click event handler for close button
+ * @param {MouseEvent} clickEvent - mouse event object
+ */
+ProjectDetailPopup.prototype._onClick = function(clickEvent) {
+    var target = (clickEvent.target || clickEvent.srcElement);
+
+    this._onClickEditProject(target);
+
+    this._onClickDeleteProject(target);
+};
+
+/**
+ * @fires ProjectDetailPopup#clickEditProject
+ * @param {HTMLElement} target - event target
+ */
+ProjectDetailPopup.prototype._onClickEditProject = function(target) {
+    var className = config.classname('popup-edit-project');
+
+    if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
+        this.fire('beforeUpdateProject', {
+            project: this._project,
+            triggerEventName: 'click',
+            trigger: this._projectEl
+        });
+
+        this.hide();
+    }
+};
+
+/**
+ * @fires ProjectDetailPopup#clickEditProject
+ * @param {HTMLElement} target - event target
+ */
+ProjectDetailPopup.prototype._onClickDeleteProject = function(target) {
+    var className = config.classname('popup-delete-project');
+
+    if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
+        this.fire('beforeDeleteProject', {
+            project: this._project
+        });
+
+        this.hide();
+    }
+};
+
+/**
+ * @override
+ * @param {object} viewModel - view model from factory/monthView
+ */
+ProjectDetailPopup.prototype.render = function(viewModel) {
+    var layer = this.layer;
+    var self = this;
+    var boxElement, guideElements;
+
+    layer.setContent(tmpl({
+        project: viewModel.project,
+        resources: viewModel.resources
+    }));
+    layer.show();
+
+    if (viewModel.trigger) {
+        boxElement = domutil.closest(viewModel.trigger, config.classname('#calendarTitle')) ||
+            viewModel.target;
+
+        this._projectEl = boxElement;
+    } else {
+        this.guide = viewModel.guide;
+        guideElements = this._getGuideElements(this.guide);
+        boxElement = guideElements.length ? guideElements[0] : null;
+    }
+
+    this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
+
+    this._project = viewModel.project;
+    this._resources = viewModel.resources;
+
+    util.debounce(function() {
+        domevent.on(document.body, 'mousedown', self._onMouseDown, self);
+    })();
+};
+
+/**
+ * Set popup position and arrow direction to apear near guide element
+ * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
+ */
+ProjectDetailPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+    var layer = domutil.find(config.classname('.popup'), this.layer.container);
+    var layerSize = {
+        width: layer.offsetWidth,
+        height: layer.offsetHeight
+    };
+    var windowSize = {
+        right: window.innerWidth,
+        bottom: window.innerHeight
+    };
+    var parentRect = this.layer.parent.getBoundingClientRect();
+    var parentBounds = {
+        left: parentRect.left,
+        top: parentRect.top
+    };
+    var pos;
+
+    pos = this._calcRenderingData(layerSize, windowSize, guideBound);
+    pos.x -= parentBounds.left;
+    pos.y -= (parentBounds.top + 6);
+    this.layer.setPosition(pos.x, pos.y);
+    this._setArrowDirection(pos.arrow);
+};
+
+/**
+ * Calculate rendering position usering guide elements
+ * @param {{width: {number}, height: {number}}} layerSize - popup layer's width and height
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} parentSize - width and height of the upper layer, that acts as a border of popup
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
+ * @returns {PopupRenderingData} rendering position of popup and popup arrow
+ */
+ProjectDetailPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+    var guideVerticalCenter = (guideBound.top + guideBound.bottom) / 2;
+    var x = guideBound.right;
+    var y = guideVerticalCenter;
+    var arrowDirection = 'arrow-left';
+    var arrowTop;
+
+    if (y < 0) {
+        y = y + (layerSize.height / 2) - guideVerticalCenter;
+    }
+
+    if (x > 0 && (x + layerSize.width > parentSize.right)) {
+        x = guideBound.left - layerSize.width - ARROW_WIDTH_HALF - 3;
+        arrowDirection = 'arrow-right';
+    }
+
+    if (x < 0) {
+        x = 0;
+    }
+
+    if (guideBound.right > x + layerSize.width) {
+        arrowDirection = 'arrow-right';
+    }
+
+    /**
+     * @typedef {Object} PopupRenderingData
+     * @property {number} x - left position
+     * @property {number} y - top position
+     * @property {string} arrow.direction - direction of popup arrow
+     * @property {number} [arrow.position] - relative position of popup arrow, if it is not set, arrow appears on the middle of popup
+     */
+    return {
+        x: x + ARROW_WIDTH_HALF,
+        y: y - (layerSize.height / 2) + ARROW_WIDTH_HALF,
+        arrow: {
+            direction: arrowDirection,
+            position: arrowTop
+        }
+    };
+};
+
+/**
+ * Set arrow's direction and position
+ * @param {Object} arrow rendering data for popup arrow
+ */
+ProjectDetailPopup.prototype._setArrowDirection = function(arrow) {
+    var direction = arrow.direction || 'arrow-left';
+    var arrowEl = domutil.find(config.classname('.popup-arrow'), this.layer.container);
+    var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
+
+    if (direction !== config.classname('arrow-left')) {
+        domutil.removeClass(arrowEl, config.classname('arrow-left'));
+        domutil.addClass(arrowEl, config.classname(direction));
+    }
+
+    if (arrow.position) {
+        borderElement.style.top = arrow.position + 'px';
+    }
+};
+
+/**
+ * Hide layer
+ */
+ProjectDetailPopup.prototype.hide = function() {
+    this.layer.hide();
+
+    if (this.guide) {
+        this.guide.clearGuideElement();
+        this.guide = null;
+    }
+
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+};
+
+/**
+ * refresh layer
+ */
+ProjectDetailPopup.prototype.refresh = function() {
+    if (this._viewModel) {
+        this.layer.setContent(this.tmpl(this._viewModel));
+    }
+};
+
+module.exports = ProjectDetailPopup;
+
+
+/***/ }),
+
+/***/ "./src/js/view/popup/resourceCreationPopup.js":
+/*!****************************************************!*\
+  !*** ./src/js/view/popup/resourceCreationPopup.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/**
+ * @fileoverview Floating layer for writing new teams
+ * @author NHN FE Development Lab <dl_javascript@nhn.com>
+ */
+
+
+var View = __webpack_require__(/*! ../../view/view */ "./src/js/view/view.js");
+var FloatingLayer = __webpack_require__(/*! ../../common/floatingLayer */ "./src/js/common/floatingLayer.js");
+var util = __webpack_require__(/*! tui-code-snippet */ "tui-code-snippet");
+var config = __webpack_require__(/*! ../../config */ "./src/js/config.js");
+var domevent = __webpack_require__(/*! ../../common/domevent */ "./src/js/common/domevent.js");
+var domutil = __webpack_require__(/*! ../../common/domutil */ "./src/js/common/domutil.js");
+var colorutil = __webpack_require__(/*! ../../common/colorutil */ "./src/js/common/colorutil.js");
+var common = __webpack_require__(/*! ../../common/common */ "./src/js/common/common.js");
+var tmpl = __webpack_require__(/*! ../template/popup/resourceCreationPopup.hbs */ "./src/js/view/template/popup/resourceCreationPopup.hbs");
+var MAX_WEEK_OF_MONTH = 6;
+var ARROW_WIDTH_HALF = 8;
+
+/**
+ * @constructor
+ * @extends {View}
+ * @param {HTMLElement} container - container element
+ * @param {Array.<Calendar>} calendars - calendar list used to create new team
+ * @param {Array.<Team>} teams - team list used to create new team
+ * @param {Array.<Resource>} resources - resource list used when creating new calendar
+ * @param {boolean} usageStatistics - GA tracking options in Team
+ */
+function ResourceCreationPopup(container, calendars, teams, resources, usageStatistics) {
+    View.call(this, container);
+    /**
+     * @type {FloatingLayer}
+     */
+    this.layer = new FloatingLayer(null, container);
+
+    /**
+     * cached view model
+     * @type {object}
+     */
+    this._viewModel = null;
+    this._selectedCal = null;
+    this._selectedTeams = [];
+    this._resource = null;
+    this.calendars = calendars;
+    this.teams = teams;
+    this.resources = resources;
+    this._focusedSelect = null;
+    this._focusedDropdown = null;
+    this._usageStatistics = usageStatistics;
+    this._onClickListeners = [
+        this._selectDropdownMenuColorPickerItem.bind(this),
+        this._selectDropdownMenuItem.bind(this),
+        this._toggleDropdownMenuView.bind(this),
+        this._closeDropdownMenuView.bind(this, null),
         this._selectSelectMenuItem.bind(this),
         this._toggleSelectMenuView.bind(this),
         this._closeSelectMenuView.bind(this, null),
         this._closePopup.bind(this),
+        this._toggleIsPerson.bind(this),
         this._onClickSaveResource.bind(this)
     ];
 
@@ -21675,6 +23428,94 @@ ResourceCreationPopup.prototype._closePopup = function(target) {
     }
 
     return false;
+};
+
+/**
+ * Toggle dropdown menu view, when user clicks dropdown button
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether user clicked dropdown button or not
+ */
+ResourceCreationPopup.prototype._toggleDropdownMenuView = function(target) {
+    var className = config.classname('resource-color-dropdown-button');
+    var dropdownBtn = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
+
+    if (!dropdownBtn) {
+        return false;
+    }
+
+    if (domutil.hasClass(dropdownBtn.parentNode, config.classname('open'))) {
+        this._closeDropdownMenuView(dropdownBtn.parentNode);
+    } else {
+        this._openDropdownMenuView(dropdownBtn.parentNode);
+    }
+
+    return true;
+};
+
+/**
+ * Close drop down menu
+ * @param {HTMLElement} dropdown - dropdown element that has a opened dropdown menu
+ */
+ResourceCreationPopup.prototype._closeDropdownMenuView = function(dropdown) {
+    dropdown = dropdown || this._focusedDropdown;
+    if (dropdown) {
+        domutil.removeClass(dropdown, config.classname('open'));
+        this._focusedDropdown = null;
+    }
+};
+
+/**
+ * Open drop down menu
+ * @param {HTMLElement} dropdown - dropdown element that has a closed dropdown menu
+ */
+ResourceCreationPopup.prototype._openDropdownMenuView = function(dropdown) {
+    domutil.addClass(dropdown, config.classname('open'));
+    this._focusedDropdown = dropdown;
+};
+
+/**
+ * If click dropdown menu color picker item, close dropdown menu
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether
+ */
+ResourceCreationPopup.prototype._selectDropdownMenuColorPickerItem = function(target) {
+    var itemClassName = config.classname('resource-color-dropdown-menu-color-picker-item');
+    var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
+
+    if (!selectedItem) {
+        return false;
+    }
+
+    return true;
+};
+
+/**
+ * If click dropdown menu item, close dropdown menu
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether
+ */
+ResourceCreationPopup.prototype._selectDropdownMenuItem = function(target) {
+    var itemClassName = config.classname('resource-color-dropdown-menu-item');
+    var iconClassName = config.classname('icon');
+    var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
+    var bgColor, dropdown, dropdownBtn;
+
+    if (!selectedItem) {
+        return false;
+    }
+
+    bgColor = domutil.find('.' + iconClassName, selectedItem).style.backgroundColor || 'transparent';
+
+    dropdown = domutil.closest(selectedItem, config.classname('.dropdown'));
+    dropdownBtn = domutil.find(config.classname('.dropdown-button'), dropdown);
+
+    if (domutil.hasClass(dropdown, config.classname('section-color'))) {
+        domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
+    }
+
+    domutil.removeClass(dropdown, config.classname('open'));
+
+    return true;
 };
 
 /**
@@ -21745,24 +23586,44 @@ ResourceCreationPopup.prototype._selectSelectMenuItem = function(target) {
 
     select = domutil.closest(selectedItem, config.classname('.select'));
 
-    if (domutil.hasClass(select, config.classname('section-calendar'))) {
+    if (domutil.hasClass(select, config.classname('section-team'))) {
         if (add) {
-            this._selectedCals = this._selectedCals.concat(
-                this.calendars.filter(function(cal) {
-                    return cal.id === domutil.getData(selectedItem, 'calendarId');
+            this._selectedTeams = this._selectedTeams.concat(
+                this.teams.filter(function(team) {
+                    return team.id === domutil.getData(selectedItem, 'teamId');
                 })
             );
         } else {
-            this._selectedCals = this._selectedCals.filter(function(cal) {
-                return cal.id !== domutil.getData(selectedItem, 'calendarId');
+            this._selectedTeams = this._selectedTeams.filter(function(team) {
+                return team.id !== domutil.getData(selectedItem, 'teamId');
             });
         }
     }
 
     cSpan = document.getElementById('countSpan');
-    cSpan.innerText = '(' + this._selectedCals.length.toString() + ')';
+    cSpan.innerText = '(' + this._selectedTeams.length.toString() + ')';
 
     return true;
+};
+
+/**
+ * Toggle isperson checkbox state
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether event target is isperson section or not
+ */
+ResourceCreationPopup.prototype._toggleIsPerson = function(target) {
+    var className = config.classname('section-isperson');
+    var personSection = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
+    var checkbox;
+
+    if (personSection) {
+        checkbox = domutil.find(config.classname('.checkbox-square'), personSection);
+        checkbox.checked = !checkbox.checked;
+
+        return true;
+    }
+
+    return false;
 };
 
 /**
@@ -21774,13 +23635,15 @@ ResourceCreationPopup.prototype._selectSelectMenuItem = function(target) {
 ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
     var className = config.classname('resource-popup-save');
     var cssPrefix = config.cssPrefix;
-    var name, calendars, changes;
+    var name, bgColor, isPerson, assignees, teams, changes;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
     }
 
-    name = domutil.get(cssPrefix + 'resource-title');
+    name = domutil.get(cssPrefix + 'resource-name');
+    bgColor = domutil.get(cssPrefix + 'resource-creation-selected-color');
+    isPerson = !!domutil.get(cssPrefix + 'resource-isperson').checked;
 
     if (!name.value) {
         name.focus();
@@ -21789,17 +23652,36 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
         return true;
     }
 
-    calendars = Array.from(document.querySelectorAll('.tui-full-calendar-select-menu > .tui-full-calendar-select-menu-item-selected')).map(function(item) {
-        return item.dataset.calendarId;
+    if (!bgColor.style.backgroundColor) {
+        // TODO: Also check for value repeated in other calendars.
+        bgColor.focus();
+        bgColor.parentElement.style.border = '1px solid red';
+
+        return true;
+    }
+    bgColor.value = (bgColor.style.backgroundColor.substring(0, 1) === 'r' ?
+        colorutil.rgb2Hex(bgColor.style.backgroundColor) :
+        bgColor.style.backgroundColor);
+
+    assignees = domutil.get(cssPrefix + 'resource-creation-assignees-input');
+
+    teams = Array.from(document.querySelectorAll('.tui-full-calendar-select-menu > .tui-full-calendar-select-menu-item-selected')).map(function(item) {
+        return item.dataset.teamId;
     });
 
     if (this._isEditMode) {
         changes = common.getResourceChanges(
             this._resource,
-            ['name', 'calendars', 'checked'],
+            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'isPerson', 'assignees', 'teams', 'checked'],
             {
                 name: name.value,
-                calendars: calendars,
+                bgColor: bgColor.value,
+                color: colorutil.determineTextforBackground(bgColor.style.backgroundColor),
+                dragBgColor: bgColor.value,
+                borderColor: bgColor.value,
+                isPerson: isPerson,
+                assignees: assignees.value.split(',') || [],
+                teams: teams,
                 checked: true
             }
         );
@@ -21816,7 +23698,13 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
          */
         this.fire('beforeCreateResource', {
             name: name.value,
-            calendars: calendars,
+            bgColor: bgColor.value,
+            color: colorutil.determineTextforBackground(bgColor.value),
+            dragBgColor: bgColor.value,
+            borderColor: bgColor.value,
+            isPerson: isPerson,
+            assignees: assignees,
+            teams: teams,
             checked: true
         });
     }
@@ -21832,12 +23720,18 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
  */
 ResourceCreationPopup.prototype.render = function(viewModel) {
     var calendars = this.calendars;
+    var assignees = []; // this.resources.filter(function(res) {
+    //      return viewModel.resource.assignees.includes(res.id);
+    //  }) || [];
+    var teams = this.teams;
     var layer = this.layer;
     var self = this;
     var boxElement, guideElements;
 
     viewModel.zIndex = this.layer.zIndex + 5;
     viewModel.calendars = calendars;
+    viewModel.teams = teams;
+    assignees = viewModel.assignees;
     this._isEditMode = viewModel.resource;
 
     if (viewModel.trigger) {
@@ -21848,16 +23742,28 @@ ResourceCreationPopup.prototype.render = function(viewModel) {
         boxElement = guideElements.length ? guideElements[0] : null;
     }
 
+    this._selectedCal = calendars[0];
     if (this._isEditMode) {
         this._resource = viewModel.resource;
-        this._selectedCals = this.calendars.filter(function(cal) {
-            return viewModel.resource.calendars.includes(cal.id);
+        this._selectedTeams = this.teams.filter(function(team) {
+            return viewModel.resource.teams.includes(team.id);
         }) || [];
-        viewModel.selectedIds = viewModel.resource.calendars || [];
+        viewModel.selectedIds = viewModel.resource.teams || [];
+        viewModel.resource.bgColor = viewModel.resource.bgColor ?
+            viewModel.resource.bgColor : colorutil.randomColor('');
+        viewModel.recColors = this.findRecommendedColors(
+            this._selectedCal.bgColor).concat([viewModel.resource.bgColor]);
+        viewModel.isPerson = (viewModel.resource.isPerson === false ?
+            viewModel.resource.isPerson : true);
+        viewModel.bgColor = viewModel.resource.bgColor;
         viewModel.name = viewModel.resource.name;
     } else {
         viewModel.selectedIds = [];
-        this._selectedCals = [];
+        this._selectedTeams = [];
+        viewModel.recColors = this.findRecommendedColors(this._selectedCal.bgColor);
+        viewModel.isPerson = (viewModel.isPerson === false ?
+            viewModel.isPerson : true);
+        viewModel.bgColor = viewModel.recColors[0];
     }
 
     layer.setContent(tmpl(viewModel));
@@ -21870,6 +23776,11 @@ ResourceCreationPopup.prototype.render = function(viewModel) {
     util.debounce(function() {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
     })();
+
+    this.fire('afterDisplayResourceEditWindow', {
+        resource: this._resource,
+        assignees: assignees
+    });
 };
 
 /**
@@ -22037,11 +23948,34 @@ ResourceCreationPopup.prototype.refresh = function() {
 };
 
 /**
- * Set calendar list
- * @param {Array.<Calendar>} calendars - calendar list
+ * Set team list
+ * @param {Array.<Team>} teams - team list
  */
-ResourceCreationPopup.prototype.setCalendars = function(calendars) {
-    this.calendars = calendars || [];
+ResourceCreationPopup.prototype.setTeams = function(teams) {
+    this.teams = teams || [];
+};
+
+/**
+ * Set resource list
+ * @param {Array.<Resource>} resources - resource list
+ */
+ResourceCreationPopup.prototype.setResources = function(resources) {
+    this.resources = resources || [];
+};
+
+/**
+ * Find an unused color recommendation
+ * @param {String} color - 7 char hex string representing color
+ * @returns {array} - array of potential colors
+ */
+ResourceCreationPopup.prototype.findRecommendedColors = function(color) {
+    var totalResources = this.resources.concat(this.teams);
+    var totalResourcesColors = [];
+    totalResources.forEach(function(res) {
+        totalResourcesColors.push(res.bgColor);
+    });
+
+    return colorutil.getRecommendedColors(color, totalResourcesColors);
 };
 
 module.exports = ResourceCreationPopup;
@@ -22091,6 +24025,7 @@ function ResourceDetailPopup(container) {
     this._viewModel = null;
     this._resource = null;
     this._calendar = null;
+    this._assignees = [];
 
     domevent.on(container, 'click', this._onClick, this);
 }
@@ -22147,6 +24082,7 @@ ResourceDetailPopup.prototype._onClickEditResource = function(target) {
     if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
         this.fire('beforeUpdateResource', {
             resource: this._resource,
+            assignees: this._assignees,
             triggerEventName: 'click',
             trigger: this._resourceEl
         });
@@ -22182,7 +24118,8 @@ ResourceDetailPopup.prototype.render = function(viewModel) {
 
     layer.setContent(tmpl({
         resource: viewModel.resource,
-        calendars: viewModel.calendars
+        teams: viewModel.teams,
+        assignees: viewModel.assignees
     }));
     layer.show();
 
@@ -22200,10 +24137,16 @@ ResourceDetailPopup.prototype.render = function(viewModel) {
     this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
 
     this._resource = viewModel.resource;
+    this._assignees = viewModel.assignees;
 
     util.debounce(function() {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
     })();
+
+    this.fire('beforeDisplayResourceEditWindow', {
+        resource: this._resource,
+        assignees: this._assignees
+    });
 };
 
 /**
@@ -22362,10 +24305,10 @@ var ARROW_WIDTH_HALF = 8;
  * @extends {View}
  * @param {HTMLElement} container - container element
  * @param {Array.<Calendar>} calendars - calendar list used to create new schedule
- * @param {Array.<Resource>} attendees - attendee list used to create new schedule
+ * @param {Array.<Resource>} resources - resource list used to create new schedule
  * @param {boolean} usageStatistics - GA tracking options in Calendar
  */
-function ScheduleCreationPopup(container, calendars, attendees, usageStatistics) {
+function ScheduleCreationPopup(container, calendars, resources, usageStatistics) {
     View.call(this, container);
     /**
      * @type {FloatingLayer}
@@ -22380,7 +24323,7 @@ function ScheduleCreationPopup(container, calendars, attendees, usageStatistics)
     this._selectedCal = null;
     this._schedule = null;
     this.calendars = calendars;
-    this.resources = attendees;
+    this.resources = resources;
     this._focusedDropdown = null;
     this._usageStatistics = usageStatistics;
     this._onClickListeners = [
@@ -22592,7 +24535,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     var cssPrefix = config.cssPrefix;
     var title, isPrivate, location, isAllDay, startDate, endDate, state;
     var start, end, calendarId;
-    var changes, attendees, attendeesArray;
+    var changes, attendees;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
@@ -22631,8 +24574,6 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
         calendarId = this._selectedCal.id;
     }
 
-    attendeesArray = attendees.value.split(',') || [];
-
     if (this._isEditMode) {
         changes = common.getScheduleChanges(
             this._schedule,
@@ -22644,7 +24585,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
                 start: start,
                 end: end,
                 isAllDay: isAllDay,
-                attendees: attendeesArray,
+                attendees: attendees.value.split(',') || [],
                 state: state.innerText
             }
         );
@@ -22677,7 +24618,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
             start: start,
             end: end,
             isAllDay: isAllDay,
-            attendees: attendeesArray,
+            attendees: attendees.value.split(',') || [],
             state: state.innerText
         });
     }
@@ -23276,6 +25217,831 @@ module.exports = ScheduleDetailPopup;
 
 /***/ }),
 
+/***/ "./src/js/view/popup/teamCreationPopup.js":
+/*!************************************************!*\
+  !*** ./src/js/view/popup/teamCreationPopup.js ***!
+  \************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/**
+ * @fileoverview Floating layer for new teams
+ * @author NHN FE Development Lab <dl_javascript@nhn.com>
+ */
+
+
+var View = __webpack_require__(/*! ../../view/view */ "./src/js/view/view.js");
+var FloatingLayer = __webpack_require__(/*! ../../common/floatingLayer */ "./src/js/common/floatingLayer.js");
+var util = __webpack_require__(/*! tui-code-snippet */ "tui-code-snippet");
+var config = __webpack_require__(/*! ../../config */ "./src/js/config.js");
+var domevent = __webpack_require__(/*! ../../common/domevent */ "./src/js/common/domevent.js");
+var domutil = __webpack_require__(/*! ../../common/domutil */ "./src/js/common/domutil.js");
+var colorutil = __webpack_require__(/*! ../../common/colorutil */ "./src/js/common/colorutil.js");
+var common = __webpack_require__(/*! ../../common/common */ "./src/js/common/common.js");
+var tmpl = __webpack_require__(/*! ../template/popup/teamCreationPopup.hbs */ "./src/js/view/template/popup/teamCreationPopup.hbs");
+var MAX_WEEK_OF_MONTH = 6;
+var ARROW_WIDTH_HALF = 8;
+
+/**
+ * @constructor
+ * @extends {View}
+ * @param {HTMLElement} container - container element
+ * @param {Array.<Calendar>} calendars - calendar list used to create new team
+ * @param {Array.<Team>} teams - team list used to create new team
+ * @param {Array.<Resource>} resources - resource list used when creating new calendar
+ * @param {boolean} usageStatistics - GA tracking options in Team
+ */
+function TeamCreationPopup(container, calendars, teams, resources, usageStatistics) {
+    View.call(this, container);
+    /**
+     * @type {FloatingLayer}
+     */
+    this.layer = new FloatingLayer(null, container);
+
+    /**
+     * cached view model
+     * @type {object}
+     */
+    this._viewModel = null;
+    this._selectedCal = null;
+    this._team = null;
+    this.calendars = calendars;
+    this.teams = teams;
+    this.resources = resources;
+    this._focusedDropdown = null;
+    this._usageStatistics = usageStatistics;
+    this._onClickListeners = [
+        this._selectDropdownMenuColorPickerItem.bind(this),
+        this._selectDropdownMenuItem.bind(this),
+        this._toggleDropdownMenuView.bind(this),
+        this._closeDropdownMenuView.bind(this, null),
+        this._closePopup.bind(this),
+        this._onClickSaveTeam.bind(this)
+    ];
+
+    domevent.on(container, 'click', this._onClick, this);
+}
+
+util.inherit(TeamCreationPopup, View);
+
+/**
+ * Mousedown event handler for hiding popup layer when user mousedown outside of
+ * layer
+ * @param {MouseEvent} mouseDownEvent - mouse event object
+ */
+TeamCreationPopup.prototype._onMouseDown = function(mouseDownEvent) {
+    var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
+        popupLayer = domutil.closest(target, config.classname('.floating-layer'));
+
+    if (popupLayer) {
+        return;
+    }
+
+    this.hide();
+};
+
+/**
+ * @override
+ */
+TeamCreationPopup.prototype.destroy = function() {
+    this.layer.destroy();
+    this.layer = null;
+    domevent.off(this.container, 'click', this._onClick, this);
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+    View.prototype.destroy.call(this);
+};
+
+/**
+ * @override
+ * Click event handler for close button
+ * @param {MouseEvent} clickEvent - mouse event object
+ */
+TeamCreationPopup.prototype._onClick = function(clickEvent) {
+    var target = (clickEvent.target || clickEvent.srcElement);
+
+    util.forEach(this._onClickListeners, function(listener) {
+        return !listener(target);
+    });
+};
+
+/**
+ * Test click event target is close button, and return layer is closed(hidden)
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether popup layer is closed or not
+ */
+TeamCreationPopup.prototype._closePopup = function(target) {
+    var className = config.classname('popup-close');
+
+    if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
+        this.hide();
+
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * Toggle dropdown menu view, when user clicks dropdown button
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether user clicked dropdown button or not
+ */
+TeamCreationPopup.prototype._toggleDropdownMenuView = function(target) {
+    var className = config.classname('team-color-dropdown-button');
+    var dropdownBtn = domutil.hasClass(target, className) ? target : domutil.closest(target, '.' + className);
+
+    if (!dropdownBtn) {
+        return false;
+    }
+
+    if (domutil.hasClass(dropdownBtn.parentNode, config.classname('open'))) {
+        this._closeDropdownMenuView(dropdownBtn.parentNode);
+    } else {
+        this._openDropdownMenuView(dropdownBtn.parentNode);
+    }
+
+    return true;
+};
+
+/**
+ * Close drop down menu
+ * @param {HTMLElement} dropdown - dropdown element that has a opened dropdown menu
+ */
+TeamCreationPopup.prototype._closeDropdownMenuView = function(dropdown) {
+    dropdown = dropdown || this._focusedDropdown;
+    if (dropdown) {
+        domutil.removeClass(dropdown, config.classname('open'));
+        this._focusedDropdown = null;
+    }
+};
+
+/**
+ * Open drop down menu
+ * @param {HTMLElement} dropdown - dropdown element that has a closed dropdown menu
+ */
+TeamCreationPopup.prototype._openDropdownMenuView = function(dropdown) {
+    domutil.addClass(dropdown, config.classname('open'));
+    this._focusedDropdown = dropdown;
+};
+
+/**
+ * If click dropdown menu color picker item, close dropdown menu
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether
+ */
+TeamCreationPopup.prototype._selectDropdownMenuColorPickerItem = function(target) {
+    var itemClassName = config.classname('team-color-dropdown-menu-color-picker-item');
+    var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
+
+    if (!selectedItem) {
+        return false;
+    }
+
+    return true;
+};
+
+/**
+ * If click dropdown menu item, close dropdown menu
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether
+ */
+TeamCreationPopup.prototype._selectDropdownMenuItem = function(target) {
+    var itemClassName = config.classname('team-color-dropdown-menu-item');
+    var iconClassName = config.classname('icon');
+    var selectedItem = domutil.hasClass(target, itemClassName) ? target : domutil.closest(target, '.' + itemClassName);
+    var bgColor, dropdown, dropdownBtn;
+
+    if (!selectedItem) {
+        return false;
+    }
+
+    bgColor = domutil.find('.' + iconClassName, selectedItem).style.backgroundColor || 'transparent';
+
+    dropdown = domutil.closest(selectedItem, config.classname('.dropdown'));
+    dropdownBtn = domutil.find(config.classname('.dropdown-button'), dropdown);
+
+    if (domutil.hasClass(dropdown, config.classname('section-color'))) {
+        domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
+    }
+
+    domutil.removeClass(dropdown, config.classname('open'));
+
+    return true;
+};
+
+/**
+ * Save new team if user clicked save button
+ * @emits TeamCreationPopup#saveTeam
+ * @param {HTMLElement} target click event target
+ * @returns {boolean} whether save button is clicked or not
+ */
+TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
+    var className = config.classname('team-popup-save');
+    var cssPrefix = config.cssPrefix;
+    var name, bgColor, resources, resourcesArray, changes;
+
+    if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
+        return false;
+    }
+
+    name = domutil.get(cssPrefix + 'team-name');
+    bgColor = domutil.get(cssPrefix + 'team-creation-selected-color');
+    resources = domutil.get(cssPrefix + 'team-creation-resources-input');
+
+    if (!name.value) {
+        name.focus();
+        name.parentElement.style.border = '1px solid red';
+
+        return true;
+    }
+
+    if (!bgColor.style.backgroundColor) {
+        // TODO: Also check for value repeated in other calendars.
+        bgColor.focus();
+        bgColor.parentElement.style.border = '1px solid red';
+
+        return true;
+    }
+    bgColor.value = (bgColor.style.backgroundColor.substring(0, 1) === 'r' ?
+        colorutil.rgb2Hex(bgColor.style.backgroundColor) :
+        bgColor.style.backgroundColor);
+
+    resourcesArray = resources.value.split(',') || [];
+
+    if (this._isEditMode) {
+        changes = common.getTeamChanges(
+            this._team,
+            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'resources', 'checked'],
+            {
+                name: name.value,
+                bgColor: bgColor.value,
+                color: colorutil.determineTextforBackground(bgColor.value),
+                dragBgColor: bgColor.value,
+                borderColor: bgColor.value,
+                resources: resourcesArray,
+                checked: true
+            }
+        );
+
+        this.fire('beforeUpdateTeam', {
+            team: this._team,
+            changes: changes
+        });
+    } else {
+        /**
+         * @event TeamCreationPopup#beforeCreateTeam
+         * @type {object}
+         * @property {Team} team - new team instance to be added
+         */
+        this.fire('beforeCreateTeam', {
+            name: name.value,
+            bgColor: bgColor.value,
+            color: colorutil.determineTextforBackground(bgColor.value),
+            dragBgColor: bgColor.value,
+            borderColor: bgColor.value,
+            resources: resourcesArray,
+            checked: true
+        });
+    }
+
+    this.hide();
+
+    return true;
+};
+
+/**
+ * @override
+ * @param {object} viewModel - view model from factory/monthView
+ */
+TeamCreationPopup.prototype.render = function(viewModel) {
+    var calendars = this.calendars;
+    var layer = this.layer;
+    var self = this;
+    var boxElement, guideElements;
+
+    viewModel.zIndex = this.layer.zIndex + 5;
+    viewModel.calendars = calendars;
+    this._isEditMode = viewModel.team;
+
+    if (viewModel.trigger) {
+        boxElement = viewModel.trigger;
+    } else {
+        this.guide = viewModel.guide;
+        guideElements = this._getGuideElements(this.guide);
+        boxElement = guideElements.length ? guideElements[0] : null;
+    }
+
+    this._selectedCal = calendars[0];
+    if (this._isEditMode) {
+        this._team = viewModel.team;
+        viewModel.recColors = this.findRecommendedColors(this._selectedCal.bgColor).concat([viewModel.team.bgColor]);
+        viewModel.bgColor = viewModel.team.bgColor;
+        viewModel.name = viewModel.team.name;
+    } else {
+        viewModel.recColors = this.findRecommendedColors(this._selectedCal.bgColor);
+        viewModel.bgColor = viewModel.recColors[0];
+    }
+
+    layer.setContent(tmpl(viewModel));
+    layer.show();
+
+    if (boxElement) {
+        this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
+    }
+
+    util.debounce(function() {
+        domevent.on(document.body, 'mousedown', self._onMouseDown, self);
+    })();
+
+    this.fire('afterDisplayTeamEditWindow', {
+        team: this._team,
+        resources: viewModel.resources
+    });
+};
+
+/**
+ * Set popup position and arrow direction to apear near guide element
+ * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
+ */
+TeamCreationPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+    var layer = domutil.find(config.classname('.popup'), this.layer.container);
+    var layerSize = {
+        width: layer.offsetWidth,
+        height: layer.offsetHeight
+    };
+    var windowSize = {
+        right: window.innerWidth,
+        bottom: window.innerHeight
+    };
+    var parentRect = this.layer.parent.getBoundingClientRect();
+    var parentBounds = {
+        left: parentRect.left,
+        top: parentRect.top
+    };
+    var pos;
+
+    pos = this._calcRenderingData(layerSize, windowSize, guideBound);
+    pos.x -= parentBounds.left;
+    pos.y -= (parentBounds.top + 6);
+    this.layer.setPosition(pos.x, pos.y);
+    this._setArrowDirection(pos.arrow);
+};
+
+/**
+ * Get guide elements from creation guide object
+ * It is used to calculate rendering position of popup
+ * It will be disappeared when hiding popup
+ * @param {MonthCreationGuide|TimeCreationGuide|AlldayCreationGuide} guide - creation guide
+ * @returns {Array.<HTMLElement>} creation guide element
+ */
+TeamCreationPopup.prototype._getGuideElements = function(guide) {
+    var guideElements = [];
+    var i = 0;
+
+    if (guide.guideElement) {
+        guideElements.push(guide.guideElement);
+    } else if (guide.guideElements) {
+        for (; i < MAX_WEEK_OF_MONTH; i += 1) {
+            if (guide.guideElements[i]) {
+                guideElements.push(guide.guideElements[i]);
+            }
+        }
+    }
+
+    return guideElements;
+};
+
+/**
+ * Get guide element's bound data which only includes top, right, bottom, left
+ * @param {Array.<HTMLElement>} guideElements - creation guide elements
+ * @returns {Object} - popup bound data
+ */
+TeamCreationPopup.prototype._getBoundOfFirstRowGuideElement = function(guideElements) {
+    var bound;
+
+    if (!guideElements.length) {
+        return null;
+    }
+
+    bound = guideElements[0].getBoundingClientRect();
+
+    return {
+        top: bound.top,
+        left: bound.left,
+        bottom: bound.bottom,
+        right: bound.right
+    };
+};
+
+/**
+ * Calculate rendering position usering guide elements
+ * @param {{width: {number}, height: {number}}} layerSize - popup layer's width and height
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} parentSize - width and height of the upper layer, that acts as a border of popup
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
+ * @returns {PopupRenderingData} rendering position of popup and popup arrow
+ */
+TeamCreationPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+    var guideHorizontalCenter = (guideBound.left + guideBound.right) / 2;
+    var x = guideHorizontalCenter - (layerSize.width / 2);
+    var y = guideBound.top - layerSize.height + 3;
+    var arrowDirection = 'arrow-bottom';
+    var arrowLeft;
+
+    if (y < 0) {
+        y = guideBound.bottom + 9;
+        arrowDirection = 'arrow-top';
+    }
+
+    if (x > 0 && (x + layerSize.width > parentSize.right)) {
+        x = parentSize.right - layerSize.width;
+    }
+
+    if (x < 0) {
+        x = 0;
+    }
+
+    if (guideHorizontalCenter - x !== layerSize.width / 2) {
+        arrowLeft = guideHorizontalCenter - x - ARROW_WIDTH_HALF;
+    }
+
+    /**
+     * @typedef {Object} PopupRenderingData
+     * @property {number} x - left position
+     * @property {number} y - top position
+     * @property {string} arrow.direction - direction of popup arrow
+     * @property {number} [arrow.position] - relative position of popup arrow, if it is not set, arrow appears on the middle of popup
+     */
+    return {
+        x: x,
+        y: y,
+        arrow: {
+            direction: arrowDirection,
+            position: arrowLeft
+        }
+    };
+};
+
+/**
+ * Set arrow's direction and position
+ * @param {Object} arrow rendering data for popup arrow
+ */
+TeamCreationPopup.prototype._setArrowDirection = function(arrow) {
+    var direction = arrow.direction || 'arrow-bottom';
+    var arrowEl = domutil.get(config.classname('popup-arrow'));
+    var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
+
+    if (direction !== config.classname('arrow-bottom')) {
+        domutil.removeClass(arrowEl, config.classname('arrow-bottom'));
+        domutil.addClass(arrowEl, config.classname(direction));
+    }
+
+    if (arrow.position) {
+        borderElement.style.left = arrow.position + 'px';
+    }
+};
+
+/**
+ * Hide layer
+ */
+TeamCreationPopup.prototype.hide = function() {
+    this.layer.hide();
+
+    if (this.guide) {
+        this.guide.clearGuideElement();
+        this.guide = null;
+    }
+
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+};
+
+/**
+ * refresh layer
+ */
+TeamCreationPopup.prototype.refresh = function() {
+    if (this._viewModel) {
+        this.layer.setContent(this.tmpl(this._viewModel));
+    }
+};
+
+/**
+ * Set team list
+ * @param {Array.<Team>} teams - team list
+ */
+TeamCreationPopup.prototype.setTeams = function(teams) {
+    this.teams = teams || [];
+};
+
+/**
+ * Set resource list
+ * @param {Array.<Resource>} resources - resource list
+ */
+TeamCreationPopup.prototype.setResources = function(resources) {
+    this.resources = resources || [];
+};
+
+/**
+ * Find an unused color recommendation
+ * @param {String} color - 7 char hex string representing color
+ * @returns {array} - array of potential colors
+ */
+TeamCreationPopup.prototype.findRecommendedColors = function(color) {
+    var totalResources = this.resources.concat(this.teams);
+    var totalResourcesColors = [];
+    totalResources.forEach(function(res) {
+        totalResourcesColors.push(res.bgColor);
+    });
+
+    return colorutil.getRecommendedColors(color, totalResourcesColors);
+};
+
+module.exports = TeamCreationPopup;
+
+
+/***/ }),
+
+/***/ "./src/js/view/popup/teamDetailPopup.js":
+/*!**********************************************!*\
+  !*** ./src/js/view/popup/teamDetailPopup.js ***!
+  \**********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/**
+ * @fileoverview Floating layer for showing team details
+ * @author NHN FE Development Lab <dl_javascript@nhn.com>
+ */
+
+
+var View = __webpack_require__(/*! ../../view/view */ "./src/js/view/view.js");
+var FloatingLayer = __webpack_require__(/*! ../../common/floatingLayer */ "./src/js/common/floatingLayer.js");
+var util = __webpack_require__(/*! tui-code-snippet */ "tui-code-snippet");
+var config = __webpack_require__(/*! ../../config */ "./src/js/config.js"),
+    domevent = __webpack_require__(/*! ../../common/domevent */ "./src/js/common/domevent.js"),
+    domutil = __webpack_require__(/*! ../../common/domutil */ "./src/js/common/domutil.js");
+var tmpl = __webpack_require__(/*! ../template/popup/teamDetailPopup.hbs */ "./src/js/view/template/popup/teamDetailPopup.hbs");
+var ARROW_WIDTH_HALF = 8;
+
+/**
+ * @constructor
+ * @extends {View}
+ * @param {HTMLElement} container - container element
+ */
+function TeamDetailPopup(container) {
+    View.call(this, container);
+    /**
+     * @type {FloatingLayer}
+     */
+    this.layer = new FloatingLayer(null, container);
+
+    /**
+     * cached view model
+     * @type {object}
+     */
+    this._viewModel = null;
+    this._team = null;
+    this._resources = null;
+
+    domevent.on(container, 'click', this._onClick, this);
+}
+
+util.inherit(TeamDetailPopup, View);
+
+/**
+ * Mousedown event handler for hiding popup layer when user mousedown outside of
+ * layer
+ * @param {MouseEvent} mouseDownEvent - mouse event object
+ */
+TeamDetailPopup.prototype._onMouseDown = function(mouseDownEvent) {
+    var target = (mouseDownEvent.target || mouseDownEvent.srcElement),
+        popupLayer = domutil.closest(target, config.classname('.floating-layer'));
+
+    if (popupLayer) {
+        return;
+    }
+
+    this.hide();
+};
+
+/**
+ * @override
+ */
+TeamDetailPopup.prototype.destroy = function() {
+    this.layer.destroy();
+    this.layer = null;
+    domevent.off(this.container, 'click', this._onClick, this);
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+    View.prototype.destroy.call(this);
+};
+
+/**
+ * @override
+ * Click event handler for close button
+ * @param {MouseEvent} clickEvent - mouse event object
+ */
+TeamDetailPopup.prototype._onClick = function(clickEvent) {
+    var target = (clickEvent.target || clickEvent.srcElement);
+
+    this._onClickEditTeam(target);
+
+    this._onClickDeleteTeam(target);
+};
+
+/**
+ * @fires TeamDetailPopup#clickEditTeam
+ * @param {HTMLElement} target - event target
+ */
+TeamDetailPopup.prototype._onClickEditTeam = function(target) {
+    var className = config.classname('popup-edit-team');
+
+    if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
+        this.fire('beforeUpdateTeam', {
+            team: this._team,
+            resources: this._resources,
+            triggerEventName: 'click',
+            trigger: this._teamEl
+        });
+
+        this.hide();
+    }
+};
+
+/**
+ * @fires TeamDetailPopup#clickEditTeam
+ * @param {HTMLElement} target - event target
+ */
+TeamDetailPopup.prototype._onClickDeleteTeam = function(target) {
+    var className = config.classname('popup-delete-team');
+
+    if (domutil.hasClass(target, className) || domutil.closest(target, '.' + className)) {
+        this.fire('beforeDeleteTeam', {
+            team: this._team
+        });
+
+        this.hide();
+    }
+};
+
+/**
+ * @override
+ * @param {object} viewModel - view model from factory/monthView
+ */
+TeamDetailPopup.prototype.render = function(viewModel) {
+    var layer = this.layer;
+    var self = this;
+    var boxElement, guideElements;
+
+    layer.setContent(tmpl({
+        team: viewModel.team,
+        resources: viewModel.resources
+    }));
+    layer.show();
+
+    if (viewModel.trigger) {
+        boxElement = domutil.closest(viewModel.trigger, config.classname('.left-nav-bar-teams-item')) ||
+            viewModel.target;
+
+        this._teamEl = boxElement;
+    } else {
+        this.guide = viewModel.guide;
+        guideElements = this._getGuideElements(this.guide);
+        boxElement = guideElements.length ? guideElements[0] : null;
+    }
+
+    this._setPopupPositionAndArrowDirection(boxElement.getBoundingClientRect());
+
+    this._team = viewModel.team;
+    this._resources = viewModel.resources;
+
+    util.debounce(function() {
+        domevent.on(document.body, 'mousedown', self._onMouseDown, self);
+    })();
+};
+
+/**
+ * Set popup position and arrow direction to apear near guide element
+ * @param {MonthCreationGuide|TimeCreationGuide|DayGridCreationGuide} guideBound - creation guide element
+ */
+TeamDetailPopup.prototype._setPopupPositionAndArrowDirection = function(guideBound) {
+    var layer = domutil.find(config.classname('.popup'), this.layer.container);
+    var layerSize = {
+        width: layer.offsetWidth,
+        height: layer.offsetHeight
+    };
+    var windowSize = {
+        right: window.innerWidth,
+        bottom: window.innerHeight
+    };
+    var parentRect = this.layer.parent.getBoundingClientRect();
+    var parentBounds = {
+        left: parentRect.left,
+        top: parentRect.top
+    };
+    var pos;
+
+    pos = this._calcRenderingData(layerSize, windowSize, guideBound);
+    pos.x -= parentBounds.left;
+    pos.y -= (parentBounds.top + 6);
+    this.layer.setPosition(pos.x, pos.y);
+    this._setArrowDirection(pos.arrow);
+};
+
+/**
+ * Calculate rendering position usering guide elements
+ * @param {{width: {number}, height: {number}}} layerSize - popup layer's width and height
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} parentSize - width and height of the upper layer, that acts as a border of popup
+ * @param {{top: {number}, left: {number}, right: {number}, bottom: {number}}} guideBound - guide element bound data
+ * @returns {PopupRenderingData} rendering position of popup and popup arrow
+ */
+TeamDetailPopup.prototype._calcRenderingData = function(layerSize, parentSize, guideBound) {
+    var guideVerticalCenter = (guideBound.top + guideBound.bottom) / 2;
+    var x = guideBound.right;
+    var y = guideVerticalCenter;
+    var arrowDirection = 'arrow-left';
+    var arrowTop;
+
+    if (y < 0) {
+        y = y + (layerSize.height / 2) - guideVerticalCenter;
+    }
+
+    if (x > 0 && (x + layerSize.width > parentSize.right)) {
+        x = guideBound.left - layerSize.width - ARROW_WIDTH_HALF - 3;
+        arrowDirection = 'arrow-right';
+    }
+
+    if (x < 0) {
+        x = 0;
+    }
+
+    if (guideBound.right > x + layerSize.width) {
+        arrowDirection = 'arrow-right';
+    }
+
+    /**
+     * @typedef {Object} PopupRenderingData
+     * @property {number} x - left position
+     * @property {number} y - top position
+     * @property {string} arrow.direction - direction of popup arrow
+     * @property {number} [arrow.position] - relative position of popup arrow, if it is not set, arrow appears on the middle of popup
+     */
+    return {
+        x: x + ARROW_WIDTH_HALF,
+        y: y - (layerSize.height / 2) + ARROW_WIDTH_HALF,
+        arrow: {
+            direction: arrowDirection,
+            position: arrowTop
+        }
+    };
+};
+
+/**
+ * Set arrow's direction and position
+ * @param {Object} arrow rendering data for popup arrow
+ */
+TeamDetailPopup.prototype._setArrowDirection = function(arrow) {
+    var direction = arrow.direction || 'arrow-left';
+    var arrowEl = domutil.find(config.classname('.popup-arrow'), this.layer.container);
+    var borderElement = domutil.find(config.classname('.popup-arrow-border', arrowEl));
+
+    if (direction !== config.classname('arrow-left')) {
+        domutil.removeClass(arrowEl, config.classname('arrow-left'));
+        domutil.addClass(arrowEl, config.classname(direction));
+    }
+
+    if (arrow.position) {
+        borderElement.style.top = arrow.position + 'px';
+    }
+};
+
+/**
+ * Hide layer
+ */
+TeamDetailPopup.prototype.hide = function() {
+    this.layer.hide();
+
+    if (this.guide) {
+        this.guide.clearGuideElement();
+        this.guide = null;
+    }
+
+    domevent.off(document.body, 'mousedown', this._onMouseDown, this);
+};
+
+/**
+ * refresh layer
+ */
+TeamDetailPopup.prototype.refresh = function() {
+    if (this._viewModel) {
+        this.layer.setContent(this.tmpl(this._viewModel));
+    }
+};
+
+module.exports = TeamDetailPopup;
+
+
+/***/ }),
+
 /***/ "./src/js/view/template/helper.js":
 /*!****************************************!*\
   !*** ./src/js/view/template/helper.js ***!
@@ -23368,6 +26134,8 @@ var helpers = {
                 return (a !== b) ? options.fn(this) : options.inverse(this);
             case '<':
                 return (a < b) ? options.fn(this) : options.inverse(this);
+            case '>':
+                return (a > b) ? options.fn(this) : options.inverse(this);
             case '||':
                 return (a || b) ? options.fn(this) : options.inverse(this);
             default:
@@ -23504,6 +26272,29 @@ var helpers = {
 
     'reverse': function(array) {
         return array.slice().reverse();
+    },
+
+    'index': function(array, index) {
+        return array[index];
+    },
+
+    'compare': function(a, oper, b) {
+        switch (oper) {
+            case '==':
+                return (a == b);  // eslint-disable-line
+            case '===':
+                return (a === b);
+            case '!==':
+                return (a !== b);
+            case '<':
+                return (a < b);
+            case '>':
+                return (a > b);
+            case '||':
+                return (a || b);
+            default:
+                throw new Error('Not match operation');
+        }
     },
 
     /**********
@@ -23691,6 +26482,10 @@ var helpers = {
         return 'All day';
     },
 
+    'popupIsPerson-tmpl': function() {
+        return 'Person? (Not a place or thing.)';
+    },
+
     'popupStateFree-tmpl': function() {
         return 'Free';
     },
@@ -23748,8 +26543,14 @@ var helpers = {
     'popupEdit-tmpl': function() {
         return 'Edit';
     },
+    'popupInvite-tmpl': function() {
+        return 'Invite';
+    },
     'popupDelete-tmpl': function() {
         return 'Delete';
+    },
+    'popupCancel-tmpl': function() {
+        return 'Close';
     }
 };
 
@@ -23943,7 +26744,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return "                        color: #ffffff; background-color:"
+  return "                        color: #ffffff; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
     + "; border-left:3px solid "
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"borderColor") : stack1), depth0))
@@ -23958,7 +26759,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 
   return "                        color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
-    + "; background-color:"
+    + "; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
     + "; border-left:3px solid "
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"borderColor") : stack1), depth0))
@@ -24511,7 +27312,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return "                    color: #ffffff; background-color:"
+  return "                    color: #ffffff; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
@@ -24526,7 +27327,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 
   return "                    color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
-    + "; background-color:"
+    + "; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"borderColor") : stack1), depth0))
@@ -24611,7 +27412,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return "                                color: #ffffff;\n                                background-color: "
+  return "                                color: #ffffff;\n                                background: "
     + container.escapeExpression(container.lambda(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
     + "\n";
 },"31":function(container,depth0,helpers,partials,data) {
@@ -24681,7 +27482,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return "                        color: #ffffff; background-color:"
+  return "                        color: #ffffff; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
@@ -24696,7 +27497,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 
   return "                        color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
-    + "; background-color:"
+    + "; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"borderColor") : stack1), depth0))
@@ -24906,10 +27707,10 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":71},"end":{"line":16,"column":85}}}) : helper)))
     + "icon "
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":90},"end":{"line":16,"column":104}}}) : helper)))
-    + "ic-delete\"></span><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":135},"end":{"line":16,"column":149}}}) : helper)))
+    + "ic-trash\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":134},"end":{"line":16,"column":148}}}) : helper)))
     + "content\">"
-    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupDelete-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupDelete-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupDelete-tmpl","hash":{},"data":data,"loc":{"start":{"line":16,"column":158},"end":{"line":16,"column":180}}}) : helper))) != null ? stack1 : "")
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupDelete-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupDelete-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupDelete-tmpl","hash":{},"data":data,"loc":{"start":{"line":16,"column":157},"end":{"line":16,"column":179}}}) : helper))) != null ? stack1 : "")
     + "</span></button>\n    </div>\n  </div>\n  <div class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":19,"column":14},"end":{"line":19,"column":28}}}) : helper)))
     + "popup-top-line\" style=\"background-color: "
@@ -24924,6 +27725,236 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":16},"end":{"line":21,"column":30}}}) : helper)))
     + "popup-arrow-border\">\n        <div class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":22,"column":20},"end":{"line":22,"column":34}}}) : helper)))
+    + "popup-arrow-fill\"></div>\n    </div>\n  </div>\n</div>\n";
+},"useData":true});
+
+/***/ }),
+
+/***/ "./src/js/view/template/popup/projectCreationPopup.hbs":
+/*!*************************************************************!*\
+  !*** ./src/js/view/template/popup/projectCreationPopup.hbs ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Handlebars = __webpack_require__(/*! ./node_modules/handlebars/runtime.js */ "./node_modules/handlebars/runtime.js");
+module.exports = (Handlebars['default'] || Handlebars).template({"1":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":35,"column":171},"end":{"line":35,"column":193}}}) : helper))) != null ? stack1 : "");
+},"3":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":35,"column":201},"end":{"line":35,"column":221}}}) : helper))) != null ? stack1 : "");
+},"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "<div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":12},"end":{"line":1,"column":26}}}) : helper)))
+    + "popup\">\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":16},"end":{"line":2,"column":30}}}) : helper)))
+    + "popup-container\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":20},"end":{"line":3,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":24},"end":{"line":4,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":57},"end":{"line":4,"column":71}}}) : helper)))
+    + "section-color\" onClick=\"this.lastElementChild.click()\">\n                <span id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":26},"end":{"line":5,"column":40}}}) : helper)))
+    + "project-color-wrapper\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":70},"end":{"line":5,"column":84}}}) : helper)))
+    + "color-wrapper\" style=\"background-color: "
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"bg_color") : stack1), depth0))
+    + ";\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":27},"end":{"line":6,"column":41}}}) : helper)))
+    + "project-color-input\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":69},"end":{"line":6,"column":83}}}) : helper)))
+    + "color-input\" type=\"color\" value=\""
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"bg_color") : stack1), depth0))
+    + "\">\n            </div>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":20},"end":{"line":9,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":24},"end":{"line":10,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":57},"end":{"line":10,"column":71}}}) : helper)))
+    + "section-start-date\">\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":29},"end":{"line":11,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":48},"end":{"line":11,"column":62}}}) : helper)))
+    + "ic-date\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":27},"end":{"line":12,"column":41}}}) : helper)))
+    + "project-start-date\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":68},"end":{"line":12,"column":82}}}) : helper)))
+    + "content\" value=\""
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"start_date") : stack1), depth0))
+    + "\"></span>\n                <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":13,"column":25},"end":{"line":13,"column":39}}}) : helper)))
+    + "startpicker-container\" style=\"margin-left: -1px; position: relative\"></div>\n            </div>\n            <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":25},"end":{"line":15,"column":39}}}) : helper)))
+    + "section-date-dash\">-</span>\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":24},"end":{"line":16,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":57},"end":{"line":16,"column":71}}}) : helper)))
+    + "section-end-date\">\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":29},"end":{"line":17,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":48},"end":{"line":17,"column":62}}}) : helper)))
+    + "ic-date\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":27},"end":{"line":18,"column":41}}}) : helper)))
+    + "project-end-date\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":66},"end":{"line":18,"column":80}}}) : helper)))
+    + "content\" value=\""
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"end_date") : stack1), depth0))
+    + "\"></span>\n                <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":19,"column":25},"end":{"line":19,"column":39}}}) : helper)))
+    + "endpicker-container\" style=\"margin-left: -1px; position: relative\"></div>\n            </div>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":22,"column":20},"end":{"line":22,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":24},"end":{"line":23,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":57},"end":{"line":23,"column":71}}}) : helper)))
+    + "section-name\">\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":29},"end":{"line":24,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":48},"end":{"line":24,"column":62}}}) : helper)))
+    + "ic-title\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":27},"end":{"line":25,"column":41}}}) : helper)))
+    + "project-name\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":62},"end":{"line":25,"column":76}}}) : helper)))
+    + "content\" placeholder=\"Name\" value=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":25,"column":111},"end":{"line":25,"column":119}}}) : helper)))
+    + "\"></span>\n            </div>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":28,"column":20},"end":{"line":28,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":24},"end":{"line":29,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":57},"end":{"line":29,"column":71}}}) : helper)))
+    + "section-name\">\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":30,"column":29},"end":{"line":30,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":30,"column":48},"end":{"line":30,"column":62}}}) : helper)))
+    + "ic-description\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":31,"column":27},"end":{"line":31,"column":41}}}) : helper)))
+    + "project-description\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":31,"column":69},"end":{"line":31,"column":83}}}) : helper)))
+    + "content\" placeholder=\"Description\" value=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"description") || (depth0 != null ? lookupProperty(depth0,"description") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"description","hash":{},"data":data,"loc":{"start":{"line":31,"column":125},"end":{"line":31,"column":140}}}) : helper)))
+    + "\"></span>\n            </div>\n        </div>\n        <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":34,"column":23},"end":{"line":34,"column":37}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":34,"column":44},"end":{"line":34,"column":58}}}) : helper)))
+    + "popup-close\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":34,"column":84},"end":{"line":34,"column":98}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":34,"column":103},"end":{"line":34,"column":117}}}) : helper)))
+    + "ic-close\"></span></button>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":20},"end":{"line":35,"column":34}}}) : helper)))
+    + "section-button-save\"><button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":70},"end":{"line":35,"column":84}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":91},"end":{"line":35,"column":105}}}) : helper)))
+    + "confirm "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":113},"end":{"line":35,"column":127}}}) : helper)))
+    + "project-popup-save\"><span>"
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(3, data, 0),"data":data,"loc":{"start":{"line":35,"column":153},"end":{"line":35,"column":228}}})) != null ? stack1 : "")
+    + "</span></button></div>\n    </div>\n    <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":13},"end":{"line":37,"column":27}}}) : helper)))
+    + "popup-arrow\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":47},"end":{"line":37,"column":61}}}) : helper)))
+    + "popup-arrow "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":73},"end":{"line":37,"column":87}}}) : helper)))
+    + "arrow-bottom\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":38,"column":20},"end":{"line":38,"column":34}}}) : helper)))
+    + "popup-arrow-border\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":39,"column":24},"end":{"line":39,"column":38}}}) : helper)))
+    + "popup-arrow-fill\"></div>\n        </div>\n    </div>\n</div>\n";
+},"useData":true});
+
+/***/ }),
+
+/***/ "./src/js/view/template/popup/projectDetailPopup.hbs":
+/*!***********************************************************!*\
+  !*** ./src/js/view/template/popup/projectDetailPopup.hbs ***!
+  \***********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Handlebars = __webpack_require__(/*! ./node_modules/handlebars/runtime.js */ "./node_modules/handlebars/runtime.js");
+module.exports = (Handlebars['default'] || Handlebars).template({"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "<div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":12},"end":{"line":1,"column":26}}}) : helper)))
+    + "popup "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":32},"end":{"line":1,"column":46}}}) : helper)))
+    + "popup-detail\">\n  <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":14},"end":{"line":2,"column":28}}}) : helper)))
+    + "popup-container\">\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":16},"end":{"line":3,"column":30}}}) : helper)))
+    + "popup-section "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":44},"end":{"line":3,"column":58}}}) : helper)))
+    + "section-header\">\n      <div>\n        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":21},"end":{"line":5,"column":35}}}) : helper)))
+    + "project-title\">"
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
+    + "</span>\n      </div>\n    </div>\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":8,"column":16},"end":{"line":8,"column":30}}}) : helper)))
+    + "section-detail\">\n      <div>\n        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":21},"end":{"line":10,"column":35}}}) : helper)))
+    + "project-description\">"
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"description") : stack1), depth0))
+    + "</span>\n      </div>\n      <div>\n        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":13,"column":21},"end":{"line":13,"column":35}}}) : helper)))
+    + "project-range\">"
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"start_date") : stack1), depth0))
+    + " - "
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"end_date") : stack1), depth0))
+    + "</span>\n      </div>\n    </div>\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":16},"end":{"line":16,"column":30}}}) : helper)))
+    + "section-button\">\n      <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":21},"end":{"line":17,"column":35}}}) : helper)))
+    + "popup-edit-project\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":68},"end":{"line":17,"column":82}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":87},"end":{"line":17,"column":101}}}) : helper)))
+    + "ic-edit\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":130},"end":{"line":17,"column":144}}}) : helper)))
+    + "content\">"
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupEdit-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupEdit-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupEdit-tmpl","hash":{},"data":data,"loc":{"start":{"line":17,"column":153},"end":{"line":17,"column":173}}}) : helper))) != null ? stack1 : "")
+    + "</span></button>\n    </div>\n  </div>\n  <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":14},"end":{"line":20,"column":28}}}) : helper)))
+    + "popup-top-line\" style=\"background-color: "
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"project") : depth0)) != null ? lookupProperty(stack1,"bg_color") : stack1), depth0))
+    + "\"></div>\n  <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":11},"end":{"line":21,"column":25}}}) : helper)))
+    + "popup-arrow\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":45},"end":{"line":21,"column":59}}}) : helper)))
+    + "popup-arrow "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":71},"end":{"line":21,"column":85}}}) : helper)))
+    + "arrow-left\">\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":22,"column":16},"end":{"line":22,"column":30}}}) : helper)))
+    + "popup-arrow-border\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":20},"end":{"line":23,"column":34}}}) : helper)))
     + "popup-arrow-fill\"></div>\n    </div>\n  </div>\n</div>\n";
 },"useData":true});
 
@@ -24946,9 +27977,52 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     };
 
   return " "
-    + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":147},"end":{"line":9,"column":161}}}) : helper)))
+    + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":147},"end":{"line":3,"column":161}}}) : helper)))
     + "hide";
-},"3":function(container,depth0,helpers,partials,data,blockParams,depths) {
+},"3":function(container,depth0,helpers,partials,data) {
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "                    <li class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":31},"end":{"line":11,"column":45}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":64},"end":{"line":11,"column":78}}}) : helper)))
+    + "resource-color-dropdown-menu-item\" data-color-hex=\""
+    + alias4(alias5(depth0, depth0))
+    + "\">\n                        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":37},"end":{"line":12,"column":51}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":56},"end":{"line":12,"column":70}}}) : helper)))
+    + "color-tile\" style=\"background-color: "
+    + alias4(alias5(depth0, depth0))
+    + "\"></span>\n                    </li>\n";
+},"5":function(container,depth0,helpers,partials,data) {
+    var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return container.escapeExpression(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":26,"column":64},"end":{"line":26,"column":78}}}) : helper)))
+    + "ic-person";
+},"7":function(container,depth0,helpers,partials,data) {
+    var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return container.escapeExpression(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":26,"column":95},"end":{"line":26,"column":109}}}) : helper)))
+    + "ic-nonperson";
+},"9":function(container,depth0,helpers,partials,data) {
+    return " checked";
+},"11":function(container,depth0,helpers,partials,data,blockParams,depths) {
     var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
           return parent[propertyName];
@@ -24957,29 +28031,29 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     };
 
   return "                    <li class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":31},"end":{"line":17,"column":45}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":43,"column":31},"end":{"line":43,"column":45}}}) : helper)))
     + "popup-section-item "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":64},"end":{"line":17,"column":78}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":43,"column":64},"end":{"line":43,"column":78}}}) : helper)))
     + "select-menu-item "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":95},"end":{"line":17,"column":109}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":43,"column":95},"end":{"line":43,"column":109}}}) : helper)))
     + "select-menu-item"
-    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(lookupProperty(helpers,"in")||(depth0 && lookupProperty(depth0,"in"))||alias2).call(alias1,(depth0 != null ? lookupProperty(depth0,"id") : depth0),(depths[1] != null ? lookupProperty(depths[1],"selectedIds") : depths[1]),{"name":"in","hash":{},"data":data,"loc":{"start":{"line":17,"column":131},"end":{"line":17,"column":153}}}),{"name":"if","hash":{},"fn":container.program(4, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":17,"column":125},"end":{"line":17,"column":171}}})) != null ? stack1 : "")
-    + "\" data-calendar-id=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"id") || (depth0 != null ? lookupProperty(depth0,"id") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"id","hash":{},"data":data,"loc":{"start":{"line":17,"column":191},"end":{"line":17,"column":197}}}) : helper)))
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(lookupProperty(helpers,"in")||(depth0 && lookupProperty(depth0,"in"))||alias2).call(alias1,(depth0 != null ? lookupProperty(depth0,"id") : depth0),(depths[1] != null ? lookupProperty(depths[1],"selectedIds") : depths[1]),{"name":"in","hash":{},"data":data,"loc":{"start":{"line":43,"column":131},"end":{"line":43,"column":153}}}),{"name":"if","hash":{},"fn":container.program(12, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":43,"column":125},"end":{"line":43,"column":171}}})) != null ? stack1 : "")
+    + "\" data-team-id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"id") || (depth0 != null ? lookupProperty(depth0,"id") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"id","hash":{},"data":data,"loc":{"start":{"line":43,"column":187},"end":{"line":43,"column":193}}}) : helper)))
     + "\">\n                        <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":37},"end":{"line":18,"column":51}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":44,"column":37},"end":{"line":44,"column":51}}}) : helper)))
     + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":56},"end":{"line":18,"column":70}}}) : helper)))
-    + "calendar-dot\" style=\"background-color: "
-    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":18,"column":109},"end":{"line":18,"column":120}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":44,"column":56},"end":{"line":44,"column":70}}}) : helper)))
+    + "team-dot\" style=\"background-color: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":44,"column":105},"end":{"line":44,"column":116}}}) : helper)))
     + "\"></span>\n                        <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":19,"column":37},"end":{"line":19,"column":51}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":45,"column":37},"end":{"line":45,"column":51}}}) : helper)))
     + "content\">"
-    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":19,"column":60},"end":{"line":19,"column":68}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":45,"column":60},"end":{"line":45,"column":68}}}) : helper)))
     + "</span>\n                    </li>\n";
-},"4":function(container,depth0,helpers,partials,data) {
+},"12":function(container,depth0,helpers,partials,data) {
     return "-selected";
-},"6":function(container,depth0,helpers,partials,data) {
+},"14":function(container,depth0,helpers,partials,data) {
     var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
           return parent[propertyName];
@@ -24987,8 +28061,8 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":25,"column":172},"end":{"line":25,"column":194}}}) : helper))) != null ? stack1 : "");
-},"8":function(container,depth0,helpers,partials,data) {
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":51,"column":172},"end":{"line":51,"column":194}}}) : helper))) != null ? stack1 : "");
+},"16":function(container,depth0,helpers,partials,data) {
     var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
           return parent[propertyName];
@@ -24996,7 +28070,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":25,"column":202},"end":{"line":25,"column":222}}}) : helper))) != null ? stack1 : "");
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":51,"column":202},"end":{"line":51,"column":222}}}) : helper))) != null ? stack1 : "");
 },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data,blockParams,depths) {
     var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
@@ -25011,80 +28085,152 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":16},"end":{"line":2,"column":30}}}) : helper)))
     + "popup-container\">\n        <div class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":20},"end":{"line":3,"column":34}}}) : helper)))
-    + "popup-section\">\n            <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":24},"end":{"line":4,"column":38}}}) : helper)))
-    + "popup-section-item "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":57},"end":{"line":4,"column":71}}}) : helper)))
-    + "section-title\">\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":29},"end":{"line":5,"column":43}}}) : helper)))
-    + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":48},"end":{"line":5,"column":62}}}) : helper)))
-    + "ic-title\"></span>\n                <input id=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":27},"end":{"line":6,"column":41}}}) : helper)))
-    + "resource-title\" class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":64},"end":{"line":6,"column":78}}}) : helper)))
-    + "content\" placeholder=\"Name\" value=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":6,"column":113},"end":{"line":6,"column":121}}}) : helper)))
-    + "\"></span>\n            </div>\n        </div>\n       <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":19},"end":{"line":9,"column":33}}}) : helper)))
     + "popup-section "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":47},"end":{"line":9,"column":61}}}) : helper)))
-    + "select "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":68},"end":{"line":9,"column":82}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":48},"end":{"line":3,"column":62}}}) : helper)))
+    + "dropdown "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":71},"end":{"line":3,"column":85}}}) : helper)))
     + "close "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":88},"end":{"line":9,"column":102}}}) : helper)))
-    + "section-calendar"
-    + ((stack1 = lookupProperty(helpers,"unless").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"calendars") : depth0)) != null ? lookupProperty(stack1,"length") : stack1),{"name":"unless","hash":{},"fn":container.program(1, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":9,"column":118},"end":{"line":9,"column":176}}})) != null ? stack1 : "")
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":91},"end":{"line":3,"column":105}}}) : helper)))
+    + "section-color"
+    + ((stack1 = lookupProperty(helpers,"unless").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"recColors") : depth0)) != null ? lookupProperty(stack1,"length") : stack1),{"name":"unless","hash":{},"fn":container.program(1, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":118},"end":{"line":3,"column":176}}})) != null ? stack1 : "")
     + "\">\n            <button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":27},"end":{"line":10,"column":41}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":27},"end":{"line":4,"column":41}}}) : helper)))
     + "button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":48},"end":{"line":10,"column":62}}}) : helper)))
-    + "select-button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":76},"end":{"line":10,"column":90}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":48},"end":{"line":4,"column":62}}}) : helper)))
+    + "resource-color-dropdown-button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":93},"end":{"line":4,"column":107}}}) : helper)))
     + "popup-section-item\">\n                <span id=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":26},"end":{"line":11,"column":40}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":26},"end":{"line":5,"column":40}}}) : helper)))
+    + "resource-creation-selected-color\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":81},"end":{"line":5,"column":95}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":100},"end":{"line":5,"column":114}}}) : helper)))
+    + "color-tile\" style=\"background-color: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":5,"column":151},"end":{"line":5,"column":162}}}) : helper)))
+    + "\"></span>\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":29},"end":{"line":6,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":48},"end":{"line":6,"column":62}}}) : helper)))
+    + "dropdown-arrow\"></span>\n                </span>\n            </button>\n            <ul class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":23},"end":{"line":9,"column":37}}}) : helper)))
+    + "dropdown-menu\" style=\"z-index: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"zIndex") || (depth0 != null ? lookupProperty(depth0,"zIndex") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"zIndex","hash":{},"data":data,"loc":{"start":{"line":9,"column":68},"end":{"line":9,"column":78}}}) : helper)))
+    + "\">\n"
+    + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"recColors") : depth0),{"name":"each","hash":{},"fn":container.program(3, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":10,"column":16},"end":{"line":14,"column":25}}})) != null ? stack1 : "")
+    + "                <li class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":27},"end":{"line":15,"column":41}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":60},"end":{"line":15,"column":74}}}) : helper)))
+    + "resource-color-dropdown-menu-color-picker-item\" style=\"font-size: 1em;\" data-color-hex=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":15,"column":162},"end":{"line":15,"column":173}}}) : helper)))
+    + "\" onClick=\"this.lastElementChild.click()\">\n                    <div style=\"position: absolute; border: 1px solid #eee; border-radius: 4px; margin-top: -0.33em; padding: 0.25em;\">\n                        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":37},"end":{"line":17,"column":51}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":56},"end":{"line":17,"column":70}}}) : helper)))
+    + "color-tile\" style=\"background-color: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":17,"column":107},"end":{"line":17,"column":118}}}) : helper)))
+    + "\"></span>\n                        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":37},"end":{"line":18,"column":51}}}) : helper)))
+    + "dropdown-menu-color-label\" style=\"color: #7767BF;\">Custom</span>\n                    </div>\n                    <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":31},"end":{"line":20,"column":45}}}) : helper)))
+    + "resource-creation-color-input\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":83},"end":{"line":20,"column":97}}}) : helper)))
+    + "color-input-on-recommended\" type=\"color\" value=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":20,"column":145},"end":{"line":20,"column":156}}}) : helper)))
+    + "\">\n                </li>\n            </ul>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":20},"end":{"line":24,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":24},"end":{"line":25,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":57},"end":{"line":25,"column":71}}}) : helper)))
+    + "section-name\">\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":26,"column":29},"end":{"line":26,"column":43}}}) : helper)))
+    + "icon "
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isPerson") : depth0),{"name":"if","hash":{},"fn":container.program(5, data, 0, blockParams, depths),"inverse":container.program(7, data, 0, blockParams, depths),"data":data,"loc":{"start":{"line":26,"column":48},"end":{"line":26,"column":128}}})) != null ? stack1 : "")
+    + "\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":27},"end":{"line":27,"column":41}}}) : helper)))
+    + "resource-name\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":63},"end":{"line":27,"column":77}}}) : helper)))
+    + "content\" placeholder=\"Name\" value=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":27,"column":112},"end":{"line":27,"column":120}}}) : helper)))
+    + "\"></span>\n            </div>\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":24},"end":{"line":29,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":57},"end":{"line":29,"column":71}}}) : helper)))
+    + "section-isperson\">\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":30,"column":27},"end":{"line":30,"column":41}}}) : helper)))
+    + "resource-isperson\" type=\"checkbox\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":30,"column":83},"end":{"line":30,"column":97}}}) : helper)))
+    + "checkbox-square\""
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isPerson") : depth0),{"name":"if","hash":{},"fn":container.program(9, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":30,"column":113},"end":{"line":30,"column":144}}})) != null ? stack1 : "")
+    + "></input>\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":31,"column":29},"end":{"line":31,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":31,"column":48},"end":{"line":31,"column":62}}}) : helper)))
+    + "ic-checkbox\" style=\"margin: 0;\"></span>\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":32,"column":29},"end":{"line":32,"column":43}}}) : helper)))
+    + "content\">"
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupIsPerson-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupIsPerson-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupIsPerson-tmpl","hash":{},"data":data,"loc":{"start":{"line":32,"column":52},"end":{"line":32,"column":76}}}) : helper))) != null ? stack1 : "")
+    + "</span>\n            </div>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":20},"end":{"line":35,"column":34}}}) : helper)))
+    + "popup-section "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":48},"end":{"line":35,"column":62}}}) : helper)))
+    + "select "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":69},"end":{"line":35,"column":83}}}) : helper)))
+    + "close "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":89},"end":{"line":35,"column":103}}}) : helper)))
+    + "section-team"
+    + ((stack1 = lookupProperty(helpers,"unless").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"teams") : depth0)) != null ? lookupProperty(stack1,"length") : stack1),{"name":"unless","hash":{},"fn":container.program(1, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":35,"column":115},"end":{"line":35,"column":169}}})) != null ? stack1 : "")
+    + "\">\n            <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":27},"end":{"line":36,"column":41}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":48},"end":{"line":36,"column":62}}}) : helper)))
+    + "select-button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":76},"end":{"line":36,"column":90}}}) : helper)))
+    + "popup-section-item\">\n                <span id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":26},"end":{"line":37,"column":40}}}) : helper)))
     + "teams\" class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":54},"end":{"line":11,"column":68}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":54},"end":{"line":37,"column":68}}}) : helper)))
     + "content\">Teams <span id=\"countSpan\">("
     + alias4(container.lambda(((stack1 = (depth0 != null ? lookupProperty(depth0,"selectedIds") : depth0)) != null ? lookupProperty(stack1,"length") : stack1), depth0))
     + ")</span>:</span>\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":29},"end":{"line":12,"column":43}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":38,"column":29},"end":{"line":38,"column":43}}}) : helper)))
     + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":48},"end":{"line":12,"column":62}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":38,"column":48},"end":{"line":38,"column":62}}}) : helper)))
     + "dropdown-arrow\"></span>\n                </span>\n            </button>\n            <ul class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":23},"end":{"line":15,"column":37}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":41,"column":23},"end":{"line":41,"column":37}}}) : helper)))
     + "select-menu\" style=\"z-index: "
-    + alias4(((helper = (helper = lookupProperty(helpers,"zIndex") || (depth0 != null ? lookupProperty(depth0,"zIndex") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"zIndex","hash":{},"data":data,"loc":{"start":{"line":15,"column":66},"end":{"line":15,"column":76}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"zIndex") || (depth0 != null ? lookupProperty(depth0,"zIndex") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"zIndex","hash":{},"data":data,"loc":{"start":{"line":41,"column":66},"end":{"line":41,"column":76}}}) : helper)))
     + "\">\n"
-    + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"calendars") : depth0),{"name":"each","hash":{},"fn":container.program(3, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":16,"column":16},"end":{"line":21,"column":25}}})) != null ? stack1 : "")
+    + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"teams") : depth0),{"name":"each","hash":{},"fn":container.program(11, data, 0, blockParams, depths),"inverse":container.noop,"data":data,"loc":{"start":{"line":42,"column":16},"end":{"line":47,"column":25}}})) != null ? stack1 : "")
     + "            </ul>\n        </div>\n        <button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":23},"end":{"line":24,"column":37}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":50,"column":23},"end":{"line":50,"column":37}}}) : helper)))
     + "button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":44},"end":{"line":24,"column":58}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":50,"column":44},"end":{"line":50,"column":58}}}) : helper)))
     + "popup-close\"><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":84},"end":{"line":24,"column":98}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":50,"column":84},"end":{"line":50,"column":98}}}) : helper)))
     + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":103},"end":{"line":24,"column":117}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":50,"column":103},"end":{"line":50,"column":117}}}) : helper)))
     + "ic-close\"></span></button>\n        <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":20},"end":{"line":25,"column":34}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":51,"column":20},"end":{"line":51,"column":34}}}) : helper)))
     + "section-button-save\"><button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":70},"end":{"line":25,"column":84}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":51,"column":70},"end":{"line":51,"column":84}}}) : helper)))
     + "button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":91},"end":{"line":25,"column":105}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":51,"column":91},"end":{"line":51,"column":105}}}) : helper)))
     + "confirm "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":113},"end":{"line":25,"column":127}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":51,"column":113},"end":{"line":51,"column":127}}}) : helper)))
     + "resource-popup-save\"><span>"
-    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(6, data, 0, blockParams, depths),"inverse":container.program(8, data, 0, blockParams, depths),"data":data,"loc":{"start":{"line":25,"column":154},"end":{"line":25,"column":229}}})) != null ? stack1 : "")
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(14, data, 0, blockParams, depths),"inverse":container.program(16, data, 0, blockParams, depths),"data":data,"loc":{"start":{"line":51,"column":154},"end":{"line":51,"column":229}}})) != null ? stack1 : "")
     + "</span></button></div>\n    </div>\n    <div id=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":13},"end":{"line":27,"column":27}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":53,"column":13},"end":{"line":53,"column":27}}}) : helper)))
     + "popup-arrow\" class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":47},"end":{"line":27,"column":61}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":53,"column":47},"end":{"line":53,"column":61}}}) : helper)))
     + "popup-arrow "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":73},"end":{"line":27,"column":87}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":53,"column":73},"end":{"line":53,"column":87}}}) : helper)))
     + "arrow-bottom\">\n        <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":28,"column":20},"end":{"line":28,"column":34}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":54,"column":20},"end":{"line":54,"column":34}}}) : helper)))
     + "popup-arrow-border\">\n            <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":24},"end":{"line":29,"column":38}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":55,"column":24},"end":{"line":55,"column":38}}}) : helper)))
     + "popup-arrow-fill\"></div>\n        </div>\n    </div>\n</div>\n";
 },"useData":true,"useDepths":true});
 
@@ -25099,27 +28245,66 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 
 var Handlebars = __webpack_require__(/*! ./node_modules/handlebars/runtime.js */ "./node_modules/handlebars/runtime.js");
 module.exports = (Handlebars['default'] || Handlebars).template({"1":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+    var stack1, alias1=depth0 != null ? depth0 : (container.nullContext || {}), lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
           return parent[propertyName];
         }
         return undefined
     };
 
-  return "<div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":46},"end":{"line":9,"column":60}}}) : helper)))
-    + "popup-detail-item "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":78},"end":{"line":9,"column":92}}}) : helper)))
-    + "popup-detail-item-indent\"><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":131},"end":{"line":9,"column":145}}}) : helper)))
-    + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":150},"end":{"line":9,"column":164}}}) : helper)))
-    + "ic-user-b\"></span><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":195},"end":{"line":9,"column":209}}}) : helper)))
-    + "content\">"
-    + ((stack1 = (lookupProperty(helpers,"popupDetailUser-tmpl")||(depth0 && lookupProperty(depth0,"popupDetailUser-tmpl"))||alias2).call(alias1,(depth0 != null ? lookupProperty(depth0,"schedule") : depth0),{"name":"popupDetailUser-tmpl","hash":{},"data":data,"loc":{"start":{"line":9,"column":218},"end":{"line":9,"column":253}}})) != null ? stack1 : "")
-    + "</span></div>";
+  return ((stack1 = lookupProperty(helpers,"if").call(alias1,(lookupProperty(helpers,"compare")||(depth0 && lookupProperty(depth0,"compare"))||container.hooks.helperMissing).call(alias1,((stack1 = ((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"assignees") : stack1)) != null ? lookupProperty(stack1,"length") : stack1),"<",1,{"name":"compare","hash":{},"data":data,"loc":{"start":{"line":6,"column":18},"end":{"line":6,"column":59}}}),{"name":"if","hash":{},"fn":container.program(2, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":6,"column":12},"end":{"line":8,"column":19}}})) != null ? stack1 : "");
+},"2":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "                <span class=\""
+    + alias3(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === "function" ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":7,"column":29},"end":{"line":7,"column":43}}}) : helper)))
+    + "resource-assignees\" data-resource-id=\""
+    + alias3(container.lambda(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"id") : stack1), depth0))
+    + "\" onClick=\"this.nextElementSibling.style.display = \"unset\"; this.style.display = \"none\";\">"
+    + ((stack1 = lookupProperty(helpers,"with").call(alias1,(lookupProperty(helpers,"index")||(depth0 && lookupProperty(depth0,"index"))||alias2).call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"assignees") : stack1),0,{"name":"index","hash":{},"data":data,"loc":{"start":{"line":7,"column":194},"end":{"line":7,"column":222}}}),{"name":"with","hash":{},"fn":container.program(3, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":7,"column":186},"end":{"line":7,"column":241}}})) != null ? stack1 : "")
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(lookupProperty(helpers,"compare")||(depth0 && lookupProperty(depth0,"compare"))||alias2).call(alias1,((stack1 = ((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"assignees") : stack1)) != null ? lookupProperty(stack1,"length") : stack1),">",1,{"name":"compare","hash":{},"data":data,"loc":{"start":{"line":7,"column":247},"end":{"line":7,"column":288}}}),{"name":"if","hash":{},"fn":container.program(5, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":7,"column":241},"end":{"line":7,"column":346}}})) != null ? stack1 : "")
+    + "</span>\n";
 },"3":function(container,depth0,helpers,partials,data) {
+    var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return container.escapeExpression(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"name","hash":{},"data":data,"loc":{"start":{"line":7,"column":224},"end":{"line":7,"column":232}}}) : helper)));
+},"5":function(container,depth0,helpers,partials,data) {
+    var stack1, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return " (+"
+    + container.escapeExpression((lookupProperty(helpers,"subtract")||(depth0 && lookupProperty(depth0,"subtract"))||container.hooks.helperMissing).call(depth0 != null ? depth0 : (container.nullContext || {}),((stack1 = ((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"assignees") : stack1)) != null ? lookupProperty(stack1,"length") : stack1),1,{"name":"subtract","hash":{},"data":data,"loc":{"start":{"line":7,"column":293},"end":{"line":7,"column":333}}}))
+    + " more)";
+},"7":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=container.escapeExpression, alias2=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "            <a class=\""
+    + alias1(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":22},"end":{"line":10,"column":36}}}) : helper)))
+    + "resource-add-assignees\" data-toggle=\"modal\" href=\"\" data-resource-name=\""
+    + alias1(alias2(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
+    + "\" data-resource-id=\""
+    + alias1(alias2(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"id") : stack1), depth0))
+    + "\">+ Assign to someone</a>\n";
+},"9":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
           return parent[propertyName];
@@ -25128,17 +28313,17 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     };
 
   return "            <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":24},"end":{"line":11,"column":38}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":24},"end":{"line":23,"column":38}}}) : helper)))
     + "popup-detail-item\"><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":70},"end":{"line":11,"column":84}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":70},"end":{"line":23,"column":84}}}) : helper)))
     + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":89},"end":{"line":11,"column":103}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":89},"end":{"line":23,"column":103}}}) : helper)))
     + "calendar-dot\" style=\"background-color: "
-    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":11,"column":142},"end":{"line":11,"column":153}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":23,"column":142},"end":{"line":23,"column":153}}}) : helper)))
     + "\"></span><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":175},"end":{"line":11,"column":189}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":175},"end":{"line":23,"column":189}}}) : helper)))
     + "content\">"
-    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":11,"column":198},"end":{"line":11,"column":206}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":23,"column":198},"end":{"line":23,"column":206}}}) : helper)))
     + "</span></div>\n";
 },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
@@ -25158,54 +28343,84 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":16},"end":{"line":3,"column":30}}}) : helper)))
     + "popup-section "
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":44},"end":{"line":3,"column":58}}}) : helper)))
-    + "section-header\">\n      <div>\n        <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":21},"end":{"line":5,"column":35}}}) : helper)))
-    + "schedule-title\">"
+    + "section-header\">\n        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":21},"end":{"line":4,"column":35}}}) : helper)))
+    + "resource-name\">"
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
-    + "</span>\n      </div>\n    </div>\n    <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":8,"column":16},"end":{"line":8,"column":30}}}) : helper)))
-    + "section-detail\">\n        "
-    + ((stack1 = lookupProperty(helpers,"if").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"schedule") : depth0)) != null ? lookupProperty(stack1,"attendees") : stack1),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":9,"column":8},"end":{"line":9,"column":273}}})) != null ? stack1 : "")
-    + "\n"
-    + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"calendars") : depth0),{"name":"each","hash":{},"fn":container.program(3, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":10,"column":8},"end":{"line":12,"column":17}}})) != null ? stack1 : "")
+    + "</span>\n"
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"assignees") : stack1),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.program(7, data, 0),"data":data,"loc":{"start":{"line":5,"column":8},"end":{"line":11,"column":15}}})) != null ? stack1 : "")
+    + "        <!--<div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":24},"end":{"line":12,"column":38}}}) : helper)))
+    + "resource-assignees-invite\">\n            <input type=\"text\" id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":13,"column":35},"end":{"line":13,"column":49}}}) : helper)))
+    + "resource-creation-assignees-input\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":13,"column":91},"end":{"line":13,"column":105}}}) : helper)))
+    + "resources-input\" data-role=\"tagsinput\" >\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":24},"end":{"line":14,"column":38}}}) : helper)))
+    + "section-button\">\n                <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":31},"end":{"line":15,"column":45}}}) : helper)))
+    + "popup-invite-resource-assignees\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":91},"end":{"line":15,"column":105}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":110},"end":{"line":15,"column":124}}}) : helper)))
+    + "ic-plus\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":153},"end":{"line":15,"column":167}}}) : helper)))
+    + "content\">"
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupInvite-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupInvite-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupInvite-tmpl","hash":{},"data":data,"loc":{"start":{"line":15,"column":176},"end":{"line":15,"column":198}}}) : helper))) != null ? stack1 : "")
+    + "</span></button>\n                <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":28},"end":{"line":16,"column":42}}}) : helper)))
+    + "popup-vertical-line\"></div>\n                <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":31},"end":{"line":17,"column":45}}}) : helper)))
+    + "popup-cancel-resource-assignees\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":91},"end":{"line":17,"column":105}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":110},"end":{"line":17,"column":124}}}) : helper)))
+    + "ic-trash\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":154},"end":{"line":17,"column":168}}}) : helper)))
+    + "content\">"
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupCancel-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupCancel-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupCancel-tmpl","hash":{},"data":data,"loc":{"start":{"line":17,"column":177},"end":{"line":17,"column":199}}}) : helper))) != null ? stack1 : "")
+    + "</span></button>\n            </div> \n        </div>-->\n    </div>\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":16},"end":{"line":21,"column":30}}}) : helper)))
+    + "section-detail col-sm-6\">\n"
+    + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"teams") : depth0),{"name":"each","hash":{},"fn":container.program(9, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":22,"column":8},"end":{"line":24,"column":17}}})) != null ? stack1 : "")
     + "    </div>\n    <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":16},"end":{"line":14,"column":30}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":26,"column":16},"end":{"line":26,"column":30}}}) : helper)))
     + "section-button\">\n      <button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":21},"end":{"line":15,"column":35}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":21},"end":{"line":27,"column":35}}}) : helper)))
     + "popup-edit-resource\"><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":69},"end":{"line":15,"column":83}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":69},"end":{"line":27,"column":83}}}) : helper)))
     + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":88},"end":{"line":15,"column":102}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":88},"end":{"line":27,"column":102}}}) : helper)))
     + "ic-edit\"></span><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":131},"end":{"line":15,"column":145}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":131},"end":{"line":27,"column":145}}}) : helper)))
     + "content\">"
-    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupEdit-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupEdit-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupEdit-tmpl","hash":{},"data":data,"loc":{"start":{"line":15,"column":154},"end":{"line":15,"column":174}}}) : helper))) != null ? stack1 : "")
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupEdit-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupEdit-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupEdit-tmpl","hash":{},"data":data,"loc":{"start":{"line":27,"column":154},"end":{"line":27,"column":174}}}) : helper))) != null ? stack1 : "")
     + "</span></button>\n      <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":18},"end":{"line":16,"column":32}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":28,"column":18},"end":{"line":28,"column":32}}}) : helper)))
     + "popup-vertical-line\"></div>\n      <button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":21},"end":{"line":17,"column":35}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":21},"end":{"line":29,"column":35}}}) : helper)))
     + "popup-delete-resource\"><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":71},"end":{"line":17,"column":85}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":71},"end":{"line":29,"column":85}}}) : helper)))
     + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":90},"end":{"line":17,"column":104}}}) : helper)))
-    + "ic-delete\"></span><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":135},"end":{"line":17,"column":149}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":90},"end":{"line":29,"column":104}}}) : helper)))
+    + "ic-trash\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":29,"column":134},"end":{"line":29,"column":148}}}) : helper)))
     + "content\">"
-    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupDelete-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupDelete-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupDelete-tmpl","hash":{},"data":data,"loc":{"start":{"line":17,"column":158},"end":{"line":17,"column":180}}}) : helper))) != null ? stack1 : "")
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupDelete-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupDelete-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupDelete-tmpl","hash":{},"data":data,"loc":{"start":{"line":29,"column":157},"end":{"line":29,"column":179}}}) : helper))) != null ? stack1 : "")
     + "</span></button>\n    </div>\n  </div>\n  <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":14},"end":{"line":20,"column":28}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":32,"column":14},"end":{"line":32,"column":28}}}) : helper)))
     + "popup-top-line\" style=\"background-color: "
-    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"schedule") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
     + "\"></div>\n  <div id=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":11},"end":{"line":21,"column":25}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":33,"column":11},"end":{"line":33,"column":25}}}) : helper)))
     + "popup-arrow\" class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":45},"end":{"line":21,"column":59}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":33,"column":45},"end":{"line":33,"column":59}}}) : helper)))
     + "popup-arrow "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":71},"end":{"line":21,"column":85}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":33,"column":71},"end":{"line":33,"column":85}}}) : helper)))
     + "arrow-left\">\n    <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":22,"column":16},"end":{"line":22,"column":30}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":34,"column":16},"end":{"line":34,"column":30}}}) : helper)))
     + "popup-arrow-border\">\n        <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":23,"column":20},"end":{"line":23,"column":34}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":35,"column":20},"end":{"line":35,"column":34}}}) : helper)))
     + "popup-arrow-fill\"></div>\n    </div>\n  </div>\n</div>\n";
 },"useData":true});
 
@@ -25228,7 +28443,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     };
 
   return " "
-    + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":150},"end":{"line":3,"column":164}}}) : helper)))
+    + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":155},"end":{"line":3,"column":169}}}) : helper)))
     + "hide";
 },"3":function(container,depth0,helpers,partials,data) {
     var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
@@ -25316,16 +28531,16 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":12},"end":{"line":1,"column":26}}}) : helper)))
     + "popup\">\n    <div class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":16},"end":{"line":2,"column":30}}}) : helper)))
-    + "popup-container\">\n        <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":20},"end":{"line":3,"column":34}}}) : helper)))
+    + "popup-container\">\n        <!-- <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":25},"end":{"line":3,"column":39}}}) : helper)))
     + "popup-section "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":48},"end":{"line":3,"column":62}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":53},"end":{"line":3,"column":67}}}) : helper)))
     + "dropdown "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":71},"end":{"line":3,"column":85}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":76},"end":{"line":3,"column":90}}}) : helper)))
     + "close "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":91},"end":{"line":3,"column":105}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":96},"end":{"line":3,"column":110}}}) : helper)))
     + "section-calendar"
-    + ((stack1 = lookupProperty(helpers,"unless").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"calendars") : depth0)) != null ? lookupProperty(stack1,"length") : stack1),{"name":"unless","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":121},"end":{"line":3,"column":179}}})) != null ? stack1 : "")
+    + ((stack1 = lookupProperty(helpers,"unless").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"calendars") : depth0)) != null ? lookupProperty(stack1,"length") : stack1),{"name":"unless","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":126},"end":{"line":3,"column":184}}})) != null ? stack1 : "")
     + "\">\n            <button class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":27},"end":{"line":4,"column":41}}}) : helper)))
     + "button "
@@ -25354,7 +28569,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"zIndex") || (depth0 != null ? lookupProperty(depth0,"zIndex") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"zIndex","hash":{},"data":data,"loc":{"start":{"line":10,"column":68},"end":{"line":10,"column":78}}}) : helper)))
     + "\">\n"
     + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"calendars") : depth0),{"name":"each","hash":{},"fn":container.program(3, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":11,"column":16},"end":{"line":16,"column":25}}})) != null ? stack1 : "")
-    + "            </ul>\n        </div>\n        <div class=\""
+    + "            </ul>\n        </div> -->\n        <div class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":19,"column":20},"end":{"line":19,"column":34}}}) : helper)))
     + "popup-section\">\n            <div class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":24},"end":{"line":20,"column":38}}}) : helper)))
@@ -25380,7 +28595,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":84},"end":{"line":24,"column":98}}}) : helper)))
     + "section-private"
     + ((stack1 = lookupProperty(helpers,"unless").call(alias1,(depth0 != null ? lookupProperty(depth0,"isPrivate") : depth0),{"name":"unless","hash":{},"fn":container.program(5, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":24,"column":113},"end":{"line":24,"column":166}}})) != null ? stack1 : "")
-    + "\">\n            <span class=\""
+    + "\" placeholder=\"Toggle public/private\">\n            <span class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":25},"end":{"line":25,"column":39}}}) : helper)))
     + "icon "
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":44},"end":{"line":25,"column":58}}}) : helper)))
@@ -25669,10 +28884,10 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":62},"end":{"line":24,"column":76}}}) : helper)))
     + "icon "
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":81},"end":{"line":24,"column":95}}}) : helper)))
-    + "ic-delete\"></span><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":126},"end":{"line":24,"column":140}}}) : helper)))
+    + "ic-trash\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":125},"end":{"line":24,"column":139}}}) : helper)))
     + "content\">"
-    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupDelete-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupDelete-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupDelete-tmpl","hash":{},"data":data,"loc":{"start":{"line":24,"column":149},"end":{"line":24,"column":171}}}) : helper))) != null ? stack1 : "")
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupDelete-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupDelete-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupDelete-tmpl","hash":{},"data":data,"loc":{"start":{"line":24,"column":148},"end":{"line":24,"column":170}}}) : helper))) != null ? stack1 : "")
     + "</span></button>\n    </div>\n";
 },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
@@ -25734,6 +28949,287 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":30,"column":16},"end":{"line":30,"column":30}}}) : helper)))
     + "popup-arrow-border\">\n        <div class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":31,"column":20},"end":{"line":31,"column":34}}}) : helper)))
+    + "popup-arrow-fill\"></div>\n    </div>\n  </div>\n</div>\n";
+},"useData":true});
+
+/***/ }),
+
+/***/ "./src/js/view/template/popup/teamCreationPopup.hbs":
+/*!**********************************************************!*\
+  !*** ./src/js/view/template/popup/teamCreationPopup.hbs ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Handlebars = __webpack_require__(/*! ./node_modules/handlebars/runtime.js */ "./node_modules/handlebars/runtime.js");
+module.exports = (Handlebars['default'] || Handlebars).template({"1":function(container,depth0,helpers,partials,data) {
+    var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return " "
+    + container.escapeExpression(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":147},"end":{"line":3,"column":161}}}) : helper)))
+    + "hide";
+},"3":function(container,depth0,helpers,partials,data) {
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "                    <li class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":31},"end":{"line":11,"column":45}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":11,"column":64},"end":{"line":11,"column":78}}}) : helper)))
+    + "team-color-dropdown-menu-item\" data-color-hex=\""
+    + alias4(alias5(depth0, depth0))
+    + "\">\n                        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":37},"end":{"line":12,"column":51}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":12,"column":56},"end":{"line":12,"column":70}}}) : helper)))
+    + "color-tile\" style=\"background-color: "
+    + alias4(alias5(depth0, depth0))
+    + "\"></span>\n                    </li>\n";
+},"5":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":37,"column":168},"end":{"line":37,"column":190}}}) : helper))) != null ? stack1 : "");
+},"7":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":37,"column":198},"end":{"line":37,"column":218}}}) : helper))) != null ? stack1 : "");
+},"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "<div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":12},"end":{"line":1,"column":26}}}) : helper)))
+    + "popup\">\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":16},"end":{"line":2,"column":30}}}) : helper)))
+    + "popup-container\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":20},"end":{"line":3,"column":34}}}) : helper)))
+    + "popup-section "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":48},"end":{"line":3,"column":62}}}) : helper)))
+    + "dropdown "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":71},"end":{"line":3,"column":85}}}) : helper)))
+    + "close "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":91},"end":{"line":3,"column":105}}}) : helper)))
+    + "section-color"
+    + ((stack1 = lookupProperty(helpers,"unless").call(alias1,((stack1 = (depth0 != null ? lookupProperty(depth0,"recColors") : depth0)) != null ? lookupProperty(stack1,"length") : stack1),{"name":"unless","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":118},"end":{"line":3,"column":176}}})) != null ? stack1 : "")
+    + "\">\n            <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":27},"end":{"line":4,"column":41}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":48},"end":{"line":4,"column":62}}}) : helper)))
+    + "team-color-dropdown-button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":4,"column":89},"end":{"line":4,"column":103}}}) : helper)))
+    + "popup-section-item\">\n                <span id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":26},"end":{"line":5,"column":40}}}) : helper)))
+    + "team-creation-selected-color\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":77},"end":{"line":5,"column":91}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":96},"end":{"line":5,"column":110}}}) : helper)))
+    + "color-tile\" style=\"background-color: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":5,"column":147},"end":{"line":5,"column":158}}}) : helper)))
+    + "\"></span>\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":29},"end":{"line":6,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":6,"column":48},"end":{"line":6,"column":62}}}) : helper)))
+    + "dropdown-arrow\"></span>\n                </span>\n            </button>\n            <ul class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":9,"column":23},"end":{"line":9,"column":37}}}) : helper)))
+    + "dropdown-menu\" style=\"z-index: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"zIndex") || (depth0 != null ? lookupProperty(depth0,"zIndex") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"zIndex","hash":{},"data":data,"loc":{"start":{"line":9,"column":68},"end":{"line":9,"column":78}}}) : helper)))
+    + "\">\n"
+    + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"recColors") : depth0),{"name":"each","hash":{},"fn":container.program(3, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":10,"column":16},"end":{"line":14,"column":25}}})) != null ? stack1 : "")
+    + "                <li class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":27},"end":{"line":15,"column":41}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":60},"end":{"line":15,"column":74}}}) : helper)))
+    + "team-color-dropdown-menu-color-picker-item\" style=\"font-size: 1em;\" data-color-hex=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":15,"column":158},"end":{"line":15,"column":169}}}) : helper)))
+    + "\" onClick=\"this.lastElementChild.click()\">\n                    <div style=\"position: absolute; border: 1px solid #eee; border-radius: 4px; margin-top: -0.33em; padding: 0.25em;\">\n                        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":37},"end":{"line":17,"column":51}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":17,"column":56},"end":{"line":17,"column":70}}}) : helper)))
+    + "color-tile\" style=\"background-color: "
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":17,"column":107},"end":{"line":17,"column":118}}}) : helper)))
+    + "\"></span>\n                        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":18,"column":37},"end":{"line":18,"column":51}}}) : helper)))
+    + "dropdown-menu-color-label\" style=\"color: #7767BF;\">Custom</span>\n                    </div>\n                    <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":31},"end":{"line":20,"column":45}}}) : helper)))
+    + "team-creation-color-input\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":79},"end":{"line":20,"column":93}}}) : helper)))
+    + "color-input-on-recommended\" type=\"color\" value=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"bgColor") || (depth0 != null ? lookupProperty(depth0,"bgColor") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"bgColor","hash":{},"data":data,"loc":{"start":{"line":20,"column":141},"end":{"line":20,"column":152}}}) : helper)))
+    + "\">\n                </li>\n            </ul>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":24,"column":20},"end":{"line":24,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":24},"end":{"line":25,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":25,"column":57},"end":{"line":25,"column":71}}}) : helper)))
+    + "section-name\">\n                <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":26,"column":29},"end":{"line":26,"column":43}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":26,"column":48},"end":{"line":26,"column":62}}}) : helper)))
+    + "ic-team\"></span>\n                <input id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":27},"end":{"line":27,"column":41}}}) : helper)))
+    + "team-name\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":27,"column":59},"end":{"line":27,"column":73}}}) : helper)))
+    + "content\" placeholder=\"Name\" value=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":27,"column":108},"end":{"line":27,"column":116}}}) : helper)))
+    + "\"></span>\n            </div>\n        </div>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":30,"column":20},"end":{"line":30,"column":34}}}) : helper)))
+    + "popup-section\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":31,"column":24},"end":{"line":31,"column":38}}}) : helper)))
+    + "popup-section-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":31,"column":57},"end":{"line":31,"column":71}}}) : helper)))
+    + "section-resources\">\n                <input type=\"text\" id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":32,"column":39},"end":{"line":32,"column":53}}}) : helper)))
+    + "team-creation-resources-input\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":32,"column":91},"end":{"line":32,"column":105}}}) : helper)))
+    + "resources-input\" data-role=\"tagsinput\" >\n\n            </div>\n        </div>\n        <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":23},"end":{"line":36,"column":37}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":44},"end":{"line":36,"column":58}}}) : helper)))
+    + "popup-close\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":84},"end":{"line":36,"column":98}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":103},"end":{"line":36,"column":117}}}) : helper)))
+    + "ic-close\"></span></button>\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":20},"end":{"line":37,"column":34}}}) : helper)))
+    + "section-button-save\"><button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":70},"end":{"line":37,"column":84}}}) : helper)))
+    + "button "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":91},"end":{"line":37,"column":105}}}) : helper)))
+    + "confirm "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":113},"end":{"line":37,"column":127}}}) : helper)))
+    + "team-popup-save\"><span>"
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(5, data, 0),"inverse":container.program(7, data, 0),"data":data,"loc":{"start":{"line":37,"column":150},"end":{"line":37,"column":225}}})) != null ? stack1 : "")
+    + "</span></button></div>\n    </div>\n    <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":39,"column":13},"end":{"line":39,"column":27}}}) : helper)))
+    + "popup-arrow\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":39,"column":47},"end":{"line":39,"column":61}}}) : helper)))
+    + "popup-arrow "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":39,"column":73},"end":{"line":39,"column":87}}}) : helper)))
+    + "arrow-bottom\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":40,"column":20},"end":{"line":40,"column":34}}}) : helper)))
+    + "popup-arrow-border\">\n            <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":41,"column":24},"end":{"line":41,"column":38}}}) : helper)))
+    + "popup-arrow-fill\"></div>\n        </div>\n    </div>\n</div>\n";
+},"useData":true});
+
+/***/ }),
+
+/***/ "./src/js/view/template/popup/teamDetailPopup.hbs":
+/*!********************************************************!*\
+  !*** ./src/js/view/template/popup/teamDetailPopup.hbs ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var Handlebars = __webpack_require__(/*! ./node_modules/handlebars/runtime.js */ "./node_modules/handlebars/runtime.js");
+module.exports = (Handlebars['default'] || Handlebars).template({"1":function(container,depth0,helpers,partials,data) {
+    var helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "              <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":26},"end":{"line":10,"column":40}}}) : helper)))
+    + "popup-detail-item "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":58},"end":{"line":10,"column":72}}}) : helper)))
+    + "popup-detail-item-indent\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":111},"end":{"line":10,"column":125}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":130},"end":{"line":10,"column":144}}}) : helper)))
+    + "ic-user-b\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":10,"column":175},"end":{"line":10,"column":189}}}) : helper)))
+    + "content\">"
+    + alias4(((helper = (helper = lookupProperty(helpers,"name") || (depth0 != null ? lookupProperty(depth0,"name") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data,"loc":{"start":{"line":10,"column":198},"end":{"line":10,"column":206}}}) : helper)))
+    + "</span></div>\n";
+},"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
+    var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
+          return parent[propertyName];
+        }
+        return undefined
+    };
+
+  return "<div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":12},"end":{"line":1,"column":26}}}) : helper)))
+    + "popup "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":1,"column":32},"end":{"line":1,"column":46}}}) : helper)))
+    + "popup-detail\">\n  <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":14},"end":{"line":2,"column":28}}}) : helper)))
+    + "popup-container\">\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":16},"end":{"line":3,"column":30}}}) : helper)))
+    + "popup-section "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":3,"column":44},"end":{"line":3,"column":58}}}) : helper)))
+    + "section-header\">\n      <div>\n        <span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":21},"end":{"line":5,"column":35}}}) : helper)))
+    + "schedule-title\">"
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"team") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
+    + "</span>\n      </div>\n    </div>\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":8,"column":16},"end":{"line":8,"column":30}}}) : helper)))
+    + "section-detail\">\n"
+    + ((stack1 = lookupProperty(helpers,"each").call(alias1,(depth0 != null ? lookupProperty(depth0,"resources") : depth0),{"name":"each","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":9,"column":8},"end":{"line":11,"column":17}}})) != null ? stack1 : "")
+    + "    </div>\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":13,"column":16},"end":{"line":13,"column":30}}}) : helper)))
+    + "section-button\">\n      <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":21},"end":{"line":14,"column":35}}}) : helper)))
+    + "popup-edit-team\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":65},"end":{"line":14,"column":79}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":84},"end":{"line":14,"column":98}}}) : helper)))
+    + "ic-edit\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":14,"column":127},"end":{"line":14,"column":141}}}) : helper)))
+    + "content\">"
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupEdit-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupEdit-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupEdit-tmpl","hash":{},"data":data,"loc":{"start":{"line":14,"column":150},"end":{"line":14,"column":170}}}) : helper))) != null ? stack1 : "")
+    + "</span></button>\n      <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":15,"column":18},"end":{"line":15,"column":32}}}) : helper)))
+    + "popup-vertical-line\"></div>\n      <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":21},"end":{"line":16,"column":35}}}) : helper)))
+    + "popup-delete-team\"><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":67},"end":{"line":16,"column":81}}}) : helper)))
+    + "icon "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":86},"end":{"line":16,"column":100}}}) : helper)))
+    + "ic-trash\"></span><span class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":16,"column":130},"end":{"line":16,"column":144}}}) : helper)))
+    + "content\">"
+    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupDelete-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupDelete-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupDelete-tmpl","hash":{},"data":data,"loc":{"start":{"line":16,"column":153},"end":{"line":16,"column":175}}}) : helper))) != null ? stack1 : "")
+    + "</span></button>\n    </div>\n  </div>\n  <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":19,"column":14},"end":{"line":19,"column":28}}}) : helper)))
+    + "popup-top-line\" style=\"background-color: "
+    + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"team") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
+    + "\"></div>\n  <div id=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":11},"end":{"line":20,"column":25}}}) : helper)))
+    + "popup-arrow\" class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":45},"end":{"line":20,"column":59}}}) : helper)))
+    + "popup-arrow "
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":20,"column":71},"end":{"line":20,"column":85}}}) : helper)))
+    + "arrow-left\">\n    <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":21,"column":16},"end":{"line":21,"column":30}}}) : helper)))
+    + "popup-arrow-border\">\n        <div class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":22,"column":20},"end":{"line":22,"column":34}}}) : helper)))
     + "popup-arrow-fill\"></div>\n    </div>\n  </div>\n</div>\n";
 },"useData":true});
 
@@ -26011,7 +29507,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return "                    color: #ffffff; background-color:"
+  return "                    color: #ffffff; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
@@ -26026,7 +29522,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 
   return "                    color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
-    + "; background-color:"
+    + "; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"borderColor") : stack1), depth0))
@@ -26287,7 +29783,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return "                    color: #ffffff; background-color:"
+  return "                    color: #ffffff; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
@@ -26302,7 +29798,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 
   return "                    color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"color") : stack1), depth0))
-    + "; background-color:"
+    + "; background:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"bgColor") : stack1), depth0))
     + "; border-color:"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"borderColor") : stack1), depth0))
@@ -26779,7 +30275,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":16},"end":{"line":2,"column":30}}}) : helper)))
     + "time-schedule "
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":2,"column":44},"end":{"line":2,"column":58}}}) : helper)))
-    + "time-date-schedule-block-focused\" style=\"color: #ffffff; background-color:"
+    + "time-date-schedule-block-focused\" style=\"color: #ffffff; background:"
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"model") : depth0)) != null ? lookupProperty(stack1,"dragBgColor") : stack1), depth0))
     + ";\">\n"
     + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"hasGoingDuration") : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data,"loc":{"start":{"line":3,"column":8},"end":{"line":5,"column":15}}})) != null ? stack1 : "")
@@ -28342,7 +31838,7 @@ TimeGrid.prototype._getTopPercentByTime = function(time) {
 TimeGrid.prototype._getHourmarkerViewModel = function(now, grids, range) {
     var todaymarkerLeft = -1;
     var todaymarkerWidth = -1;
-    var hourmarkerTimzones = [];
+    var hourmarkerTimezones = [];
     var opt = this.options;
     var primaryOffset = Timezone.getOffset();
     var timezones = opt.timezones;
@@ -28363,7 +31859,7 @@ TimeGrid.prototype._getHourmarkerViewModel = function(now, grids, range) {
         hourmarker.setMinutes(hourmarker.getMinutes() + timezoneDifference);
         dateDifference = datetime.getDateDifference(hourmarker, now);
 
-        hourmarkerTimzones.push({
+        hourmarkerTimezones.push({
             hourmarker: hourmarker,
             dateDifferenceSign: (dateDifference < 0) ? '-' : '+',
             dateDifference: Math.abs(dateDifference)
@@ -28373,7 +31869,7 @@ TimeGrid.prototype._getHourmarkerViewModel = function(now, grids, range) {
     viewModel = {
         currentHours: now.getHours(),
         hourmarkerTop: this._getTopPercentByTime(now),
-        hourmarkerTimzones: hourmarkerTimzones,
+        hourmarkerTimezones: hourmarkerTimezones,
         todaymarkerLeft: todaymarkerLeft,
         todaymarkerWidth: todaymarkerWidth,
         todaymarkerRight: todaymarkerLeft + todaymarkerWidth
@@ -28607,7 +32103,11 @@ TimeGrid.prototype.refreshHourmarker = function() {
                 var todaymarker = domutil.find(config.classname('.timegrid-todaymarker'), hourmarker);
                 var hourmarkerContainer = domutil.find(config.classname('.timegrid-hourmarker-time'), hourmarker);
                 var timezone = domutil.closest(hourmarker, config.classname('.timegrid-timezone'));
-                var timezoneIndex = timezone ? domutil.getData(timezone, 'timezoneIndex') : 0;
+                var timezoneIndex = (timezone &&
+                    domutil.getData(timezone, 'timezoneIndex') !== '') ?
+                    domutil.getData(timezone, 'timezoneIndex') : 0;
+                // TODO: @index in handlebars is breaking so data-timezone-index
+                //    isn't getting a value.  Multiple TZs will rebreak this.
 
                 hourmarker.style.top = baseViewModel.hourmarkerTop + '%';
 
@@ -28616,7 +32116,7 @@ TimeGrid.prototype.refreshHourmarker = function() {
                 }
                 if (hourmarkerContainer) {
                     hourmarkerContainer.innerHTML = timegridCurrentTimeTmpl(
-                        baseViewModel.hourmarkerTimzones[timezoneIndex]
+                        baseViewModel.hourmarkerTimezones[timezoneIndex]
                     );
                 }
             });
