@@ -251,7 +251,7 @@ ScheduleCreationPopup.prototype._toggleIsPrivate = function(target) {
 ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     var className = config.classname('schedule-popup-save');
     var cssPrefix = config.cssPrefix;
-    var title, isPrivate, location, isAllDay, startDate, endDate, state;
+    var title, isPrivate, location, isAllDay, startDate, endDate;
     var start, end, calendarId;
     var changes, attendees;
 
@@ -277,7 +277,6 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
 
     isPrivate = !domutil.hasClass(domutil.get(cssPrefix + 'schedule-private'), config.classname('public'));
     location = domutil.get(cssPrefix + 'schedule-location');
-    state = domutil.get(cssPrefix + 'schedule-state');
     isAllDay = !!domutil.get(cssPrefix + 'schedule-allday').checked;
 
     if (isAllDay) {
@@ -295,7 +294,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     if (this._isEditMode) {
         changes = common.getScheduleChanges(
             this._schedule,
-            ['calendarId', 'title', 'location', 'start', 'end', 'isAllDay', 'attendees', 'state'],
+            ['calendarId', 'title', 'location', 'start', 'end', 'isAllDay', 'attendees'],
             {
                 calendarId: calendarId,
                 title: title.value,
@@ -303,8 +302,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
                 start: start,
                 end: end,
                 isAllDay: isAllDay,
-                attendees: attendees.value.split(',') || [],
-                state: state.innerText
+                attendees: attendees.value.split(',') || []
             }
         );
 
@@ -336,8 +334,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
             start: start,
             end: end,
             isAllDay: isAllDay,
-            attendees: attendees.value.split(',') || [],
-            state: state.innerText
+            attendees: attendees.value.split(',') || []
         });
     }
 
@@ -412,7 +409,7 @@ ScheduleCreationPopup.prototype.render = function(viewModel) {
  */
 ScheduleCreationPopup.prototype._makeEditModeData = function(viewModel) {
     var schedule = viewModel.schedule;
-    var title, isPrivate, location, startDate, endDate, isAllDay, state;
+    var title, isPrivate, location, startDate, endDate, isAllDay;
     var raw = schedule.raw || {};
     var calendars = this.calendars;
 
@@ -423,7 +420,6 @@ ScheduleCreationPopup.prototype._makeEditModeData = function(viewModel) {
     startDate = schedule.start;
     endDate = schedule.end;
     isAllDay = schedule.isAllDay;
-    state = schedule.state;
 
     viewModel.selectedCal = this._selectedCal = common.find(this.calendars, function(cal) {
         return cal.id === viewModel.schedule.calendarId;
@@ -439,7 +435,6 @@ ScheduleCreationPopup.prototype._makeEditModeData = function(viewModel) {
         isPrivate: isPrivate,
         location: location,
         isAllDay: isAllDay,
-        state: state,
         start: startDate,
         end: endDate,
         raw: {

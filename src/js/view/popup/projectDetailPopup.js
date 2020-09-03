@@ -31,6 +31,7 @@ function ProjectDetailPopup(container) {
      */
     this._viewModel = null;
     this._project = null;
+    this._projectEl = null;
     this._resources = null;
 
     domevent.on(container, 'click', this._onClick, this);
@@ -71,11 +72,14 @@ ProjectDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ProjectDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditProject(target);
+        this._onClickEditProject(target);
 
-    this._onClickDeleteProject(target);
+        this._onClickDeleteProject(target);
+    }
 };
 
 /**
@@ -130,7 +134,6 @@ ProjectDetailPopup.prototype.render = function(viewModel) {
     if (viewModel.trigger) {
         boxElement = domutil.closest(viewModel.trigger, config.classname('#calendarTitle')) ||
             viewModel.target;
-
         this._projectEl = boxElement;
     } else {
         this.guide = viewModel.guide;

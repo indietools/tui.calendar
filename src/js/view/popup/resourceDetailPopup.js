@@ -72,11 +72,14 @@ ResourceDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ResourceDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditResource(target);
+        this._onClickEditResource(target);
 
-    this._onClickDeleteResource(target);
+        this._onClickDeleteResource(target);
+    }
 };
 
 /**

@@ -72,11 +72,14 @@ ScheduleDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ScheduleDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditSchedule(target);
+        this._onClickEditSchedule(target);
 
-    this._onClickDeleteSchedule(target);
+        this._onClickDeleteSchedule(target);
+    }
 };
 
 /**

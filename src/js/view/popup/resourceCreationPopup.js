@@ -97,11 +97,14 @@ ResourceCreationPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ResourceCreationPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    util.forEach(this._onClickListeners, function(listener) {
-        return !listener(target);
-    });
+        util.forEach(this._onClickListeners, function(listener) {
+            return !listener(target);
+        });
+    }
 };
 
 /**
@@ -198,7 +201,7 @@ ResourceCreationPopup.prototype._selectDropdownMenuItem = function(target) {
     bgColor = domutil.find('.' + iconClassName, selectedItem).style.backgroundColor || 'transparent';
 
     dropdown = domutil.closest(selectedItem, config.classname('.dropdown'));
-    dropdownBtn = domutil.find(config.classname('.dropdown-button'), dropdown);
+    dropdownBtn = domutil.find(config.classname('.resource-color-dropdown-button'), dropdown);
 
     if (domutil.hasClass(dropdown, config.classname('section-color'))) {
         domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
@@ -363,7 +366,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
     if (this._isEditMode) {
         changes = common.getResourceChanges(
             this._resource,
-            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'isPerson', 'assignees', 'teams', 'checked'],
+            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'isPerson', 'assignees', 'teams'],
             {
                 name: name.value,
                 bgColor: bgColor.value,
@@ -372,8 +375,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
                 borderColor: bgColor.value,
                 isPerson: isPerson,
                 assignees: assignees.value.split(',') || [],
-                teams: teams,
-                checked: true
+                teams: teams
             }
         );
 
@@ -395,8 +397,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
             borderColor: bgColor.value,
             isPerson: isPerson,
             assignees: assignees,
-            teams: teams,
-            checked: true
+            teams: teams
         });
     }
 

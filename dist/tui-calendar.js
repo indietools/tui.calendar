@@ -1,6 +1,6 @@
 /*!
  * TOAST UI Calendar
- * @version 1.12.11 | Tue Aug 25 2020
+ * @version 1.12.11 | Mon Aug 31 2020
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  * @license MIT
  */
@@ -11460,17 +11460,19 @@ Calendar.prototype.changeView = function(newViewName, force) {
     this._refreshMethod = created.refresh;
     this._scrollToNowMethod = created.scrollToNow;
     this._openCreationPopup = created.openCreationPopup;
+    this._showCreationPopup = created.showCreationPopup;
+    this._openProjectCreationPopup = created.openProjectCreationPopup;
+    this._showProjectCreationPopup = created.showProjectCreationPopup;
     this._showProjectDetailPopup = created.showProjectDetailPopup;
     this._openCalendarCreationPopup = created.openCalendarCreationPopup;
+    this._showCalendarCreationPopup = created.showCalendarCreationPopup;
     this._showCalendarDetailPopup = created.showCalendarDetailPopup;
     this._openTeamCreationPopup = created.openTeamCreationPopup;
+    this._showTeamCreationPopup = created.showTeamCreationPopup;
     this._showTeamDetailPopup = created.showTeamDetailPopup;
     this._openResourceCreationPopup = created.openResourceCreationPopup;
-    this._showResourceDetailPopup = created.showResourceDetailPopup;
-    this._showCreationPopup = created.showCreationPopup;
-    this._showCalendarCreationPopup = created.showCalendarCreationPopup;
-    this._showTeamCreationPopup = created.showTeamCreationPopup;
     this._showResourceCreationPopup = created.showResourceCreationPopup;
+    this._showResourceDetailPopup = created.showResourceDetailPopup;
     this._hideMoreView = created.hideMoreView;
 
     this.move();
@@ -11936,8 +11938,14 @@ var config = __webpack_require__(/*! ../config */ "./src/js/config.js"),
     MonthResize = __webpack_require__(/*! ../handler/month/resize */ "./src/js/handler/month/resize.js"),
     MonthMove = __webpack_require__(/*! ../handler/month/move */ "./src/js/handler/month/move.js"),
     More = __webpack_require__(/*! ../view/month/more */ "./src/js/view/month/more.js"),
-    CalendarCreationPopup = __webpack_require__(/*! ../view/popup/calendarCreationPopup */ "./src/js/view/popup/calendarCreationPopup.js"),
+    ProjectCreationPopup = __webpack_require__(/*! ../view/popup/projectCreationPopup */ "./src/js/view/popup/projectCreationPopup.js"),
+    ProjectDetailPopup = __webpack_require__(/*! ../view/popup/projectDetailPopup */ "./src/js/view/popup/projectDetailPopup.js"),
+    ResourceCreationPopup = __webpack_require__(/*! ../view/popup/resourceCreationPopup */ "./src/js/view/popup/resourceCreationPopup.js"),
+    ResourceDetailPopup = __webpack_require__(/*! ../view/popup/resourceDetailPopup */ "./src/js/view/popup/resourceDetailPopup.js"),
     TeamCreationPopup = __webpack_require__(/*! ../view/popup/teamCreationPopup */ "./src/js/view/popup/teamCreationPopup.js"),
+    TeamDetailPopup = __webpack_require__(/*! ../view/popup/teamDetailPopup */ "./src/js/view/popup/teamDetailPopup.js"),
+    CalendarCreationPopup = __webpack_require__(/*! ../view/popup/calendarCreationPopup */ "./src/js/view/popup/calendarCreationPopup.js"),
+    CalendarDetailPopup = __webpack_require__(/*! ../view/popup/calendarDetailPopup */ "./src/js/view/popup/calendarDetailPopup.js"),
     ScheduleCreationPopup = __webpack_require__(/*! ../view/popup/scheduleCreationPopup */ "./src/js/view/popup/scheduleCreationPopup.js"),
     ScheduleDetailPopup = __webpack_require__(/*! ../view/popup/scheduleDetailPopup */ "./src/js/view/popup/scheduleDetailPopup.js"),
     Schedule = __webpack_require__(/*! ../model/schedule */ "./src/js/model/schedule.js");
@@ -11977,7 +11985,15 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
     var moveHandler, clearSchedulesHandler, onUpdateSchedule, onEditCalendar;
     var onShowCreationPopup, onSaveNewSchedule, onSaveNewTeam, onShowEditPopup;
     var detailView, onShowDetailPopup, onDeleteSchedule, onEditSchedule;
-    var onEditTeam;
+    var onEditTeam, onDisplayEditSchedule, createProjectView, createResourceView;
+    var onSaveNewCalendar, onSaveNewResource, detailProjectView, detailTeamView;
+    var detailCalendarView, detailResourceView, onShowProjectDetailPopup;
+    var onShowTeamDetailPopup, onShowCalendarDetailPopup, onShowResourceDetailPopup;
+    var onDeleteTeam, onDeleteCalendar, onDeleteResource, onEditProject;
+    var onUpdateScheduleCalendar, onDisplayEditTeam, onDisplayEditProject;
+    var onDisplayEditCalendar, onDisplayEditResource, onBeforeDisplayEditResource;
+    var onEditResource, onShowProjectEditPopup, onShowTeamEditPopup;
+    var onShowCalendarEditPopup, onShowResourceEditPopup;
 
     monthViewContainer = domutil.appendHTMLElement(
         'div', layoutContainer, config.classname('month'));
@@ -12039,12 +12055,20 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
     // binding popup for schedules creation
     if (options.useCreationPopup) {
+        createProjectView = new ProjectCreationPopup(
+            layoutContainer, options.usageStatistics);
         createView = new ScheduleCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
         createTeamView = new TeamCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
         createCalendarView = new CalendarCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
+        createResourceView = new ResourceCreationPopup(
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             creationHandler.fire('beforeCreateSchedule', util.extend(scheduleData, {
@@ -12052,19 +12076,54 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
             }));
         };
 
+        onSaveNewTeam = function(teamData) {
+            util.extend(teamData, {
+                useCreationPopup: true
+            });
+            createView.fire('beforeCreateTeam', teamData);
+        };
+
+        onSaveNewCalendar = function(calendarData) {
+            util.extend(calendarData, {
+                useCreationPopup: true
+            });
+            createView.fire('beforeCreateCalendar', calendarData);
+        };
+
+        onSaveNewResource = function(resourceData) {
+            util.extend(resourceData, {
+                useCreationPopup: true
+            });
+            createView.fire('beforeCreateResource', resourceData);
+        };
+
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
-        createView.on('beforeCreateCalendar', onSaveNewSchedule);
-        createView.on('beforeCreateTeam', onSaveNewTeam);
+        createTeamView.on('beforeCreateTeam', onSaveNewTeam);
+        createCalendarView.on('beforeCreateCalendar', onSaveNewCalendar);
+        createResourceView.on('beforeCreateResource', onSaveNewResource);
     }
 
     // binding popup for schedule detail
     if (options.useDetailPopup) {
+        detailProjectView = new ProjectDetailPopup(layoutContainer, baseController.calendars);
         detailView = new ScheduleDetailPopup(layoutContainer, baseController.calendars);
+        detailTeamView = new TeamDetailPopup(layoutContainer, baseController.resources);
+        detailCalendarView = new CalendarDetailPopup(layoutContainer, baseController.calendars);
+        detailResourceView = new ResourceDetailPopup(layoutContainer);
+
         onShowDetailPopup = function(eventData) {
             var scheduleId = eventData.schedule.calendarId;
+            var resourceIds = eventData.schedule.attendees || [];
             eventData.calendar = common.find(baseController.calendars, function(calendar) {
                 return calendar.id === scheduleId;
             });
+
+            eventData.attendees = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
+            });
+            eventData.attendees.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
 
             if (options.isReadOnly) {
                 eventData.schedule = util.extend({}, eventData.schedule, {isReadOnly: true});
@@ -12072,31 +12131,175 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
             detailView.render(eventData);
         };
+        onShowProjectDetailPopup = function(eventData) {
+            detailProjectView.render(eventData);
+        };
+        onShowTeamDetailPopup = function(eventData) {
+            var calendarId = eventData.calendarId;
+            var teamId = eventData.teamId;
+            var resourceIds;
+
+            eventData.team = common.find(baseController.teams, function(team) {
+                return team.id === teamId;
+            });
+
+            resourceIds = eventData.team.resources || [];
+
+            eventData.calendar = common.find(baseController.calendars, function(calendar) {
+                return calendar.id === calendarId;
+            });
+
+            eventData.resources = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
+            });
+            eventData.resources.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
+
+            detailTeamView.render(eventData);
+        };
+        onShowCalendarDetailPopup = function(eventData) {
+            var calendarId = eventData.calendarId;
+            // var resourceIds = eventData.calendar.resources || [];
+            eventData.calendar = common.find(baseController.calendars, function(calendar) {
+                return calendar.id === calendarId;
+            });
+
+            detailCalendarView.render(eventData);
+        };
+        onShowResourceDetailPopup = function(eventData) {
+            var resourceId = eventData.resourceId;
+            var teamIds, resourceIds;
+            eventData.resource = common.find(baseController.resources, function(resource) {
+                return resource.id === resourceId;
+            });
+
+            resourceIds = eventData.resource.assignees || [];
+            teamIds = eventData.resource.teams || [];
+            eventData.teams = baseController.teams.filter(function(team) {
+                return teamIds.includes(team.id);
+            });
+
+            eventData.assignees = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
+            });
+
+            detailResourceView.render(eventData);
+        };
         onDeleteSchedule = function(eventData) {
             if (creationHandler) {
                 creationHandler.fire('beforeDeleteSchedule', eventData);
             }
         };
+        onDeleteTeam = function(eventData) {
+            creationHandler.fire('beforeDeleteTeam', eventData);
+        };
+        onDeleteCalendar = function(eventData) {
+            creationHandler.fire('beforeDeleteCalendar', eventData);
+        };
+        onDeleteResource = function(eventData) {
+            creationHandler.fire('beforeDeleteResource', eventData);
+        };
         onEditSchedule = function(eventData) {
             moveHandler.fire('beforeUpdateSchedule', eventData);
+        };
+        onEditProject = function(eventData) {
+            creationHandler.fire('beforeUpdateProject', eventData);
+        };
+        onEditTeam = function(eventData) {
+            creationHandler.fire('beforeUpdateTeam', eventData);
+        };
+        onEditCalendar = function(eventData) {
+            creationHandler.fire('beforeUpdateCalendar', eventData);
+        };
+        onDisplayEditSchedule = function(eventData) {
+            creationHandler.fire('afterDisplayScheduleEditWindow', eventData);
+        };
+        onUpdateScheduleCalendar = function(eventData) {
+            creationHandler.fire('afterUpdateScheduleCalendar', eventData);
+        };
+        onDisplayEditTeam = function(eventData) {
+            creationHandler.fire('afterDisplayTeamEditWindow', eventData);
+        };
+        onDisplayEditProject = function(eventData) {
+            creationHandler.fire('afterDisplayProjectEditWindow', eventData);
+        };
+        onDisplayEditCalendar = function(eventData) {
+            creationHandler.fire('afterDisplayCalendarEditWindow', eventData);
+        };
+        onDisplayEditResource = function(eventData) {
+            creationHandler.fire('afterDisplayResourceEditWindow', eventData);
+        };
+        onBeforeDisplayEditResource = function(eventData) {
+            creationHandler.fire('beforeDisplayResourceEditWindow', eventData);
+        };
+        onEditResource = function(eventData) {
+            creationHandler.fire('beforeUpdateResource', eventData);
         };
 
         clickHandler.on('clickSchedule', onShowDetailPopup);
 
-        detailView.on('beforeDeleteSchedule', onDeleteSchedule);
-
         if (options.useCreationPopup) {
             onShowEditPopup = function(eventData) {
-                createView.setCalendars(baseController.calendars);
+                var calendars = baseController.calendars;
+                eventData.isEditMode = true;
+                createView.setCalendars(calendars);
                 createView.render(eventData);
             };
+            onShowProjectEditPopup = function(eventData) {
+                eventData.isEditMode = true;
+                createProjectView.render(eventData);
+            };
+            onShowTeamEditPopup = function(eventData) {
+                var resources = baseController.resources;
+                eventData.isEditMode = true;
+                createTeamView.setResources(resources);
+                createTeamView.render(eventData);
+            };
+            onShowCalendarEditPopup = function(eventData) {
+                var calendars = baseController.calendars;
+                eventData.isEditMode = true;
+                createCalendarView.setCalendars(calendars);
+                createCalendarView.render(eventData);
+            };
+            onShowResourceEditPopup = function(eventData) {
+                var teams = baseController.teams;
+                eventData.isEditMode = true;
+                createResourceView.setTeams(teams);
+                createResourceView.render(eventData);
+            };
+
             createView.on('beforeUpdateSchedule', onEditSchedule);
-            createView.on('beforeUpdateCalendar', onEditCalendar);
-            createView.on('beforeUpdateTeam', onEditTeam);
+            createView.on('afterDisplayScheduleEditWindow', onDisplayEditSchedule);
+            createView.on('afterUpdateScheduleCalendar', onUpdateScheduleCalendar);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
+
+            createProjectView.on('beforeUpdateProject', onEditProject);
+            createProjectView.on('afterDisplayProjectEditWindow', onDisplayEditProject);
+            detailProjectView.on('beforeUpdateProject', onShowProjectEditPopup);
+
+            createTeamView.on('beforeUpdateTeam', onEditTeam);
+            createTeamView.on('afterDisplayTeamEditWindow', onDisplayEditTeam);
+            detailTeamView.on('beforeUpdateTeam', onShowTeamEditPopup);
+
+            createCalendarView.on('beforeUpdateCalendar', onEditCalendar);
+            createCalendarView.on('afterDisplayCalendarEditWindow', onDisplayEditCalendar);
+            detailCalendarView.on('beforeUpdateCalendar', onShowCalendarEditPopup);
+
+            createResourceView.on('beforeUpdateResource', onEditResource);
+            createResourceView.on('afterDisplayResourceEditWindow', onDisplayEditResource);
+            detailResourceView.on('beforeDisplayResourceEditWindow', onBeforeDisplayEditResource);
+            detailResourceView.on('beforeUpdateResource', onShowResourceEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
+            detailTeamView.on('beforeUpdateTeam', onEditTeam);
+            detailCalendarView.on('beforeUpdateCalendar', onEditCalendar);
+            detailResourceView.on('beforeUpdateResource', onEditResource);
         }
+        detailView.on('beforeDeleteSchedule', onDeleteSchedule);
+        detailTeamView.on('beforeDeleteTeam', onDeleteTeam);
+        detailCalendarView.on('beforeDeleteCalendar', onDeleteCalendar);
+        detailResourceView.on('beforeDeleteResource', onDeleteResource);
     }
 
     // binding clear schedules
@@ -12151,16 +12354,30 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         if (options.useCreationPopup) {
             if (creationHandler) {
                 creationHandler.off('beforeCreateSchedule', onShowCreationPopup);
+                createResourceView.off('beforeCreateResource', onSaveNewResource);
+                createTeamView.off('beforeCreateTeam', onSaveNewTeam);
+                createCalendarView.off('beforeCreateCalendar', onSaveNewCalendar);
             }
+
             createView.off('saveSchedule', onSaveNewSchedule);
             createView.destroy();
+            createResourceView.destroy();
+            createTeamView.destroy();
+            createCalendarView.destroy();
         }
 
         if (options.useDetailPopup) {
             clickHandler.off('clickSchedule', onShowDetailPopup);
             detailView.off('beforeUpdateSchedule', onUpdateSchedule);
             detailView.off('beforeDeleteSchedule', onDeleteSchedule);
+            detailResourceView.off('beforeDeleteResource', onDeleteResource);
+            detailTeamView.off('beforeDeleteTeam', onDeleteTeam);
+            detailCalendarView.off('beforeDeleteCalendar', onDeleteCalendar);
+
             detailView.destroy();
+            detailResourceView.destroy();
+            detailTeamView.destroy();
+            detailCalendarView.destroy();
         }
     };
 
@@ -12172,14 +12389,68 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         refresh: function() {
             monthView.vLayout.refresh();
         },
-        openTeamCreationPopup: function() {
-            if (createTeamView && creationHandler) {
-                creationHandler.invokeTeamCreationClick();
+        openResourceCreationPopup: function(resource) {
+            if (createResourceView) {
+                creationHandler.invokeResourceCreationClick(resource);
             }
         },
-        openCalendarCreationPopup: function() {
-            if (createCalendarView && creationHandler) {
-                creationHandler.invokeCalendarCreationClick();
+        showResourceCreationPopup: function(resource) {
+            if (createResourceView) {
+                createResourceView.render(resource);
+            }
+        },
+        showResourceDetailPopup: function(resource) {
+            if (onShowResourceDetailPopup) {
+                resource.guide = creationHandler.guide;
+                onShowResourceDetailPopup(resource);
+            }
+        },
+        openTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                creationHandler.invokeTeamCreationClick(team);
+            }
+        },
+        showTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                createTeamView.render(team);
+            }
+        },
+        showTeamDetailPopup: function(team) {
+            if (onShowTeamDetailPopup) {
+                team.guide = creationHandler.guide;
+                onShowTeamDetailPopup(team);
+            }
+        },
+        openCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                creationHandler.invokeCalendarCreationClick(calendar);
+            }
+        },
+        showCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                createCalendarView.render(calendar);
+            }
+        },
+        showCalendarDetailPopup: function(calendar) {
+            if (onShowCalendarDetailPopup) {
+                calendar.guide = creationHandler.guide;
+                onShowCalendarDetailPopup(calendar);
+            }
+        },
+        openProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                creationHandler.invokeProjectCreationClick(project);
+            }
+        },
+        showProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                createProjectView.render(project);
+            }
+        },
+        showProjectDetailPopup: function(project) {
+            if (onShowProjectDetailPopup) {
+                project.guide = creationHandler.guide;
+                onShowProjectDetailPopup(project);
             }
         },
         openCreationPopup: function(schedule) {
@@ -12766,19 +13037,10 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (options.useCreationPopup) {
             createResourceView.off('beforeCreateResource', onSaveNewResource);
             createResourceView.destroy();
-        }
-
-        if (options.useCreationPopup) {
             createTeamView.off('beforeCreateTeam', onSaveNewTeam);
             createTeamView.destroy();
-        }
-
-        if (options.useCreationPopup) {
             createCalendarView.off('beforeCreateCalendar', onSaveNewCalendar);
             createCalendarView.destroy();
-        }
-
-        if (options.useCreationPopup) {
             createView.off('beforeCreateSchedule', onSaveNewSchedule);
             createView.destroy();
         }
@@ -12786,14 +13048,10 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (options.useDetailPopup) {
             detailResourceView.off('beforeDeleteResource', onDeleteResource);
             detailResourceView.destroy();
-        }
-
-        if (options.useDetailPopup) {
+            detailTeamView.off('beforeDeleteTeam', onDeleteTeam);
+            detailTeamView.destroy();
             detailCalendarView.off('beforeDeleteCalendar', onDeleteCalendar);
             detailCalendarView.destroy();
-        }
-
-        if (options.useDetailPopup) {
             detailView.off('beforeDeleteSchedule', onDeleteSchedule);
             detailView.destroy();
         }
@@ -14907,9 +15165,7 @@ function Drag(options, container) {
 
     this.options = util.extend({
         distance: 10,
-        exclude: function(item) {
-          return item.classList.contains('tui-full-calendar-dayname');
-        }
+        exclude: null
     }, options);
 
     /**
@@ -15485,6 +15741,60 @@ MonthCreation.prototype._createSchedule = function(eventData) {
 };
 
 /**
+ * Request team model creation to controller by custom team.
+ * @fires {MonthCreation#beforeCreateTeam}
+ * @param {object} teamData - team data from MonthCreation module.
+ */
+MonthCreation.prototype._createTeam = function(teamData) {
+    /**
+     * @event {MonthCreation#beforeCreateTeam}
+     * @type {object}
+     * @property {MonthCreationGuide} guide - MonthCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var teamViewModelData = teamData;
+    teamViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateTeam', teamViewModelData);
+};
+
+/**
+ * Request resource model creation to controller by custom resource.
+ * @fires {MonthCreation#beforeCreateResource}
+ * @param {object} resourceData - resource data from MonthCreation module.
+ */
+MonthCreation.prototype._createResource = function(resourceData) {
+    /**
+     * @event {MonthCreation#beforeCreateResource}
+     * @type {object}
+     * @property {MonthCreationGuide} guide - MonthCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var resourceViewModelData = resourceData;
+    resourceViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateResource', resourceViewModelData);
+};
+
+/**
+ * Request calendar model creation to controller by custom calendar.
+ * @fires {MonthCreation#beforeCreateCalendar}
+ * @param {object} calendarData - calendar data from MonthCreation module.
+ */
+MonthCreation.prototype._createCalendar = function(calendarData) {
+    /**
+     * @event {MonthCreation#beforeCreateCalendar}
+     * @type {object}
+     * @property {MonthCreationGuide} guide - MonthCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var calendarViewModelData = calendarData;
+    calendarViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateCalendar', calendarViewModelData);
+};
+
+/**
  * DragStart event handler
  * @fires {MonthCreation#monthCreationDragstart}
  * @param {object} dragStartEvent - dragStart event data
@@ -15693,6 +16003,48 @@ MonthCreation.prototype.invokeEventCreationClick = function(calendar) {
     };
 
     this.fire('calendarCreationClick', eventData);
+};
+
+/**
+ * Invoke creation click
+ * @param {Team} team - team instance
+ */
+MonthCreation.prototype.invokeTeamCreationClick = function(team) {
+    var teamData;
+
+    teamData = team;
+
+    // this.fire('click', teamData);
+
+    this._createTeam(teamData);
+};
+
+/**
+ * Invoke creation click
+ * @param {Resource} resource - resource instance
+ */
+MonthCreation.prototype.invokeResourceCreationClick = function(resource) {
+    var resourceData;
+
+    resourceData = resource;
+
+    // this.fire('click', resourceData);
+
+    this._createResource(resourceData);
+};
+
+/**
+ * Invoke creation click
+ * @param {Calendar} calendar - calendar instance
+ */
+MonthCreation.prototype.invokeCalendarCreationClick = function(calendar) {
+    var calendarData;
+
+    calendarData = calendar;
+
+    // this.fire('click', calendarData);
+
+    this._createCalendar(calendarData);
 };
 
 /**
@@ -19933,15 +20285,21 @@ Schedule.prototype.init = function(options) {
 };
 
 Schedule.prototype.setAllDayPeriod = function(start, end) {
+    var newStart = false;
+    var newEnd = false;
     // If it is an all-day schedule, only the date information of the string is used.
     if (util.isString(start)) {
-        start = datetime.parse(start.substring(0, 10));
-    } else {
+        newStart = datetime.parse(start.substring(0, 10));
+    }
+    // If the first one failed or if we didn't do it, try this.
+    if (!newStart) {
         start = new TZDate(start || Date.now());
     }
     if (util.isString(end)) {
-        end = datetime.parse(end.substring(0, 10));
-    } else {
+        newEnd = datetime.parse(end.substring(0, 10));
+    }
+    // If the first one failed or if we didn't do it, try this.
+    if (!newEnd) {
         end = new TZDate(end || this.start);
     }
 
@@ -22691,11 +23049,14 @@ ProjectCreationPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ProjectCreationPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    util.forEach(this._onClickListeners, function(listener) {
-        return !listener(target);
-    });
+        util.forEach(this._onClickListeners, function(listener) {
+            return !listener(target);
+        });
+    }
 };
 
 /**
@@ -22972,15 +23333,18 @@ ProjectCreationPopup.prototype._setArrowDirection = function(arrow) {
  */
 ProjectCreationPopup.prototype._createDatepicker = function(start, end) {
     var cssPrefix = config.cssPrefix;
+    var startSplit = start.split('-');
+    var endSplit = end.split('-');
 
+    // TODO: Project doesn't respect TZs yet.  So TZDate() => Date()
     this.rangePicker = DatePicker.createRangePicker({
         startpicker: {
-            date: new TZDate(start).toDate(),
+            date: new Date(startSplit[0], startSplit[1] - 1, startSplit[2]),
             input: '#' + cssPrefix + 'project-start-date',
             container: '#' + cssPrefix + 'startpicker-container'
         },
         endpicker: {
-            date: new TZDate(end).toDate(),
+            date: new Date(endSplit[0], endSplit[1] - 1, endSplit[2]),
             input: '#' + cssPrefix + 'project-end-date',
             container: '#' + cssPrefix + 'endpicker-container'
         },
@@ -23059,6 +23423,7 @@ function ProjectDetailPopup(container) {
      */
     this._viewModel = null;
     this._project = null;
+    this._projectEl = null;
     this._resources = null;
 
     domevent.on(container, 'click', this._onClick, this);
@@ -23099,11 +23464,14 @@ ProjectDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ProjectDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditProject(target);
+        this._onClickEditProject(target);
 
-    this._onClickDeleteProject(target);
+        this._onClickDeleteProject(target);
+    }
 };
 
 /**
@@ -23158,7 +23526,6 @@ ProjectDetailPopup.prototype.render = function(viewModel) {
     if (viewModel.trigger) {
         boxElement = domutil.closest(viewModel.trigger, config.classname('#calendarTitle')) ||
             viewModel.target;
-
         this._projectEl = boxElement;
     } else {
         this.guide = viewModel.guide;
@@ -23406,11 +23773,14 @@ ResourceCreationPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ResourceCreationPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    util.forEach(this._onClickListeners, function(listener) {
-        return !listener(target);
-    });
+        util.forEach(this._onClickListeners, function(listener) {
+            return !listener(target);
+        });
+    }
 };
 
 /**
@@ -23507,7 +23877,7 @@ ResourceCreationPopup.prototype._selectDropdownMenuItem = function(target) {
     bgColor = domutil.find('.' + iconClassName, selectedItem).style.backgroundColor || 'transparent';
 
     dropdown = domutil.closest(selectedItem, config.classname('.dropdown'));
-    dropdownBtn = domutil.find(config.classname('.dropdown-button'), dropdown);
+    dropdownBtn = domutil.find(config.classname('.resource-color-dropdown-button'), dropdown);
 
     if (domutil.hasClass(dropdown, config.classname('section-color'))) {
         domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
@@ -23672,7 +24042,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
     if (this._isEditMode) {
         changes = common.getResourceChanges(
             this._resource,
-            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'isPerson', 'assignees', 'teams', 'checked'],
+            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'isPerson', 'assignees', 'teams'],
             {
                 name: name.value,
                 bgColor: bgColor.value,
@@ -23681,8 +24051,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
                 borderColor: bgColor.value,
                 isPerson: isPerson,
                 assignees: assignees.value.split(',') || [],
-                teams: teams,
-                checked: true
+                teams: teams
             }
         );
 
@@ -23704,8 +24073,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
             borderColor: bgColor.value,
             isPerson: isPerson,
             assignees: assignees,
-            teams: teams,
-            checked: true
+            teams: teams
         });
     }
 
@@ -24065,11 +24433,14 @@ ResourceDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ResourceDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditResource(target);
+        this._onClickEditResource(target);
 
-    this._onClickDeleteResource(target);
+        this._onClickDeleteResource(target);
+    }
 };
 
 /**
@@ -24533,7 +24904,7 @@ ScheduleCreationPopup.prototype._toggleIsPrivate = function(target) {
 ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     var className = config.classname('schedule-popup-save');
     var cssPrefix = config.cssPrefix;
-    var title, isPrivate, location, isAllDay, startDate, endDate, state;
+    var title, isPrivate, location, isAllDay, startDate, endDate;
     var start, end, calendarId;
     var changes, attendees;
 
@@ -24559,7 +24930,6 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
 
     isPrivate = !domutil.hasClass(domutil.get(cssPrefix + 'schedule-private'), config.classname('public'));
     location = domutil.get(cssPrefix + 'schedule-location');
-    state = domutil.get(cssPrefix + 'schedule-state');
     isAllDay = !!domutil.get(cssPrefix + 'schedule-allday').checked;
 
     if (isAllDay) {
@@ -24577,7 +24947,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
     if (this._isEditMode) {
         changes = common.getScheduleChanges(
             this._schedule,
-            ['calendarId', 'title', 'location', 'start', 'end', 'isAllDay', 'attendees', 'state'],
+            ['calendarId', 'title', 'location', 'start', 'end', 'isAllDay', 'attendees'],
             {
                 calendarId: calendarId,
                 title: title.value,
@@ -24585,8 +24955,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
                 start: start,
                 end: end,
                 isAllDay: isAllDay,
-                attendees: attendees.value.split(',') || [],
-                state: state.innerText
+                attendees: attendees.value.split(',') || []
             }
         );
 
@@ -24618,8 +24987,7 @@ ScheduleCreationPopup.prototype._onClickSaveSchedule = function(target) {
             start: start,
             end: end,
             isAllDay: isAllDay,
-            attendees: attendees.value.split(',') || [],
-            state: state.innerText
+            attendees: attendees.value.split(',') || []
         });
     }
 
@@ -24694,7 +25062,7 @@ ScheduleCreationPopup.prototype.render = function(viewModel) {
  */
 ScheduleCreationPopup.prototype._makeEditModeData = function(viewModel) {
     var schedule = viewModel.schedule;
-    var title, isPrivate, location, startDate, endDate, isAllDay, state;
+    var title, isPrivate, location, startDate, endDate, isAllDay;
     var raw = schedule.raw || {};
     var calendars = this.calendars;
 
@@ -24705,7 +25073,6 @@ ScheduleCreationPopup.prototype._makeEditModeData = function(viewModel) {
     startDate = schedule.start;
     endDate = schedule.end;
     isAllDay = schedule.isAllDay;
-    state = schedule.state;
 
     viewModel.selectedCal = this._selectedCal = common.find(this.calendars, function(cal) {
         return cal.id === viewModel.schedule.calendarId;
@@ -24721,7 +25088,6 @@ ScheduleCreationPopup.prototype._makeEditModeData = function(viewModel) {
         isPrivate: isPrivate,
         location: location,
         isAllDay: isAllDay,
-        state: state,
         start: startDate,
         end: endDate,
         raw: {
@@ -25020,11 +25386,14 @@ ScheduleDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ScheduleDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditSchedule(target);
+        this._onClickEditSchedule(target);
 
-    this._onClickDeleteSchedule(target);
+        this._onClickDeleteSchedule(target);
+    }
 };
 
 /**
@@ -25318,11 +25687,14 @@ TeamCreationPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 TeamCreationPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    util.forEach(this._onClickListeners, function(listener) {
-        return !listener(target);
-    });
+        util.forEach(this._onClickListeners, function(listener) {
+            return !listener(target);
+        });
+    }
 };
 
 /**
@@ -25419,7 +25791,7 @@ TeamCreationPopup.prototype._selectDropdownMenuItem = function(target) {
     bgColor = domutil.find('.' + iconClassName, selectedItem).style.backgroundColor || 'transparent';
 
     dropdown = domutil.closest(selectedItem, config.classname('.dropdown'));
-    dropdownBtn = domutil.find(config.classname('.dropdown-button'), dropdown);
+    dropdownBtn = domutil.find(config.classname('.team-color-dropdown-button'), dropdown);
 
     if (domutil.hasClass(dropdown, config.classname('section-color'))) {
         domutil.find('.' + iconClassName, dropdownBtn).style.backgroundColor = bgColor;
@@ -25472,15 +25844,14 @@ TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
     if (this._isEditMode) {
         changes = common.getTeamChanges(
             this._team,
-            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'resources', 'checked'],
+            ['name', 'bgColor', 'color', 'dragBgColor', 'borderColor', 'resources'],
             {
                 name: name.value,
                 bgColor: bgColor.value,
                 color: colorutil.determineTextforBackground(bgColor.value),
                 dragBgColor: bgColor.value,
                 borderColor: bgColor.value,
-                resources: resourcesArray,
-                checked: true
+                resources: resourcesArray
             }
         );
 
@@ -25500,8 +25871,7 @@ TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
             color: colorutil.determineTextforBackground(bgColor.value),
             dragBgColor: bgColor.value,
             borderColor: bgColor.value,
-            resources: resourcesArray,
-            checked: true
+            resources: resourcesArray
         });
     }
 
@@ -25841,11 +26211,14 @@ TeamDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 TeamDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditTeam(target);
+        this._onClickEditTeam(target);
 
-    this._onClickDeleteTeam(target);
+        this._onClickDeleteTeam(target);
+    }
 };
 
 /**
@@ -28484,14 +28857,14 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
 },"7":function(container,depth0,helpers,partials,data) {
     return " checked";
 },"9":function(container,depth0,helpers,partials,data) {
-    var helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
+    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
           return parent[propertyName];
         }
         return undefined
     };
 
-  return container.escapeExpression(((helper = (helper = lookupProperty(helpers,"state") || (depth0 != null ? lookupProperty(depth0,"state") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"state","hash":{},"data":data,"loc":{"start":{"line":61,"column":99},"end":{"line":61,"column":108}}}) : helper)));
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":59,"column":172},"end":{"line":59,"column":194}}}) : helper))) != null ? stack1 : "");
 },"11":function(container,depth0,helpers,partials,data) {
     var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
@@ -28500,25 +28873,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
         return undefined
     };
 
-  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupStateBusy-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupStateBusy-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupStateBusy-tmpl","hash":{},"data":data,"loc":{"start":{"line":61,"column":116},"end":{"line":61,"column":141}}}) : helper))) != null ? stack1 : "");
-},"13":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
-        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
-          return parent[propertyName];
-        }
-        return undefined
-    };
-
-  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupUpdate-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupUpdate-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupUpdate-tmpl","hash":{},"data":data,"loc":{"start":{"line":76,"column":172},"end":{"line":76,"column":194}}}) : helper))) != null ? stack1 : "");
-},"15":function(container,depth0,helpers,partials,data) {
-    var stack1, helper, lookupProperty = container.lookupProperty || function(parent, propertyName) {
-        if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
-          return parent[propertyName];
-        }
-        return undefined
-    };
-
-  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":76,"column":202},"end":{"line":76,"column":222}}}) : helper))) != null ? stack1 : "");
+  return ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupSave-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupSave-tmpl") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"popupSave-tmpl","hash":{},"data":data,"loc":{"start":{"line":59,"column":202},"end":{"line":59,"column":222}}}) : helper))) != null ? stack1 : "");
 },"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
     var stack1, helper, alias1=depth0 != null ? depth0 : (container.nullContext || {}), alias2=container.hooks.helperMissing, alias3="function", alias4=container.escapeExpression, alias5=container.lambda, lookupProperty = container.lookupProperty || function(parent, propertyName) {
         if (Object.prototype.hasOwnProperty.call(parent, propertyName)) {
@@ -28681,90 +29036,34 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":55,"column":29},"end":{"line":55,"column":43}}}) : helper)))
     + "content\">"
     + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupIsAllDay-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupIsAllDay-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupIsAllDay-tmpl","hash":{},"data":data,"loc":{"start":{"line":55,"column":52},"end":{"line":55,"column":76}}}) : helper))) != null ? stack1 : "")
-    + "</span>\n            </div>\n        </div>\n        <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":20},"end":{"line":58,"column":34}}}) : helper)))
-    + "popup-section "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":48},"end":{"line":58,"column":62}}}) : helper)))
-    + "dropdown "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":71},"end":{"line":58,"column":85}}}) : helper)))
-    + "close "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":91},"end":{"line":58,"column":105}}}) : helper)))
-    + "section-state\">\n            <button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":59,"column":27},"end":{"line":59,"column":41}}}) : helper)))
+    + "</span>\n            </div>\n        </div>\n        <button class=\""
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":23},"end":{"line":58,"column":37}}}) : helper)))
     + "button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":59,"column":48},"end":{"line":59,"column":62}}}) : helper)))
-    + "dropdown-button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":59,"column":78},"end":{"line":59,"column":92}}}) : helper)))
-    + "popup-section-item\">\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":60,"column":29},"end":{"line":60,"column":43}}}) : helper)))
-    + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":60,"column":48},"end":{"line":60,"column":62}}}) : helper)))
-    + "ic-state\"></span>\n                <span id=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":61,"column":26},"end":{"line":61,"column":40}}}) : helper)))
-    + "schedule-state\" class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":61,"column":63},"end":{"line":61,"column":77}}}) : helper)))
-    + "content\">"
-    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"state") : depth0),{"name":"if","hash":{},"fn":container.program(9, data, 0),"inverse":container.program(11, data, 0),"data":data,"loc":{"start":{"line":61,"column":86},"end":{"line":61,"column":148}}})) != null ? stack1 : "")
-    + "</span>\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":62,"column":29},"end":{"line":62,"column":43}}}) : helper)))
-    + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":62,"column":48},"end":{"line":62,"column":62}}}) : helper)))
-    + "dropdown-arrow\"></span>\n            </button>\n            <ul class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":64,"column":23},"end":{"line":64,"column":37}}}) : helper)))
-    + "dropdown-menu\" style=\"z-index: "
-    + alias4(((helper = (helper = lookupProperty(helpers,"zIndex") || (depth0 != null ? lookupProperty(depth0,"zIndex") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"zIndex","hash":{},"data":data,"loc":{"start":{"line":64,"column":68},"end":{"line":64,"column":78}}}) : helper)))
-    + "\">\n                <li class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":65,"column":27},"end":{"line":65,"column":41}}}) : helper)))
-    + "popup-section-item "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":65,"column":60},"end":{"line":65,"column":74}}}) : helper)))
-    + "dropdown-menu-item\">\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":66,"column":29},"end":{"line":66,"column":43}}}) : helper)))
-    + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":66,"column":48},"end":{"line":66,"column":62}}}) : helper)))
-    + "none\"></span>\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":67,"column":29},"end":{"line":67,"column":43}}}) : helper)))
-    + "content\">"
-    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupStateBusy-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupStateBusy-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupStateBusy-tmpl","hash":{},"data":data,"loc":{"start":{"line":67,"column":52},"end":{"line":67,"column":77}}}) : helper))) != null ? stack1 : "")
-    + "</span>\n                </li>\n                <li class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":69,"column":27},"end":{"line":69,"column":41}}}) : helper)))
-    + "popup-section-item "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":69,"column":60},"end":{"line":69,"column":74}}}) : helper)))
-    + "dropdown-menu-item\">\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":70,"column":29},"end":{"line":70,"column":43}}}) : helper)))
-    + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":70,"column":48},"end":{"line":70,"column":62}}}) : helper)))
-    + "none\"></span>\n                <span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":71,"column":29},"end":{"line":71,"column":43}}}) : helper)))
-    + "content\">"
-    + ((stack1 = ((helper = (helper = lookupProperty(helpers,"popupStateFree-tmpl") || (depth0 != null ? lookupProperty(depth0,"popupStateFree-tmpl") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"popupStateFree-tmpl","hash":{},"data":data,"loc":{"start":{"line":71,"column":52},"end":{"line":71,"column":77}}}) : helper))) != null ? stack1 : "")
-    + "</span>\n                </li>\n            </ul>\n        </div>\n        <button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":75,"column":23},"end":{"line":75,"column":37}}}) : helper)))
-    + "button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":75,"column":44},"end":{"line":75,"column":58}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":44},"end":{"line":58,"column":58}}}) : helper)))
     + "popup-close\"><span class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":75,"column":84},"end":{"line":75,"column":98}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":84},"end":{"line":58,"column":98}}}) : helper)))
     + "icon "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":75,"column":103},"end":{"line":75,"column":117}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":58,"column":103},"end":{"line":58,"column":117}}}) : helper)))
     + "ic-close\"></span></button>\n        <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":76,"column":20},"end":{"line":76,"column":34}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":59,"column":20},"end":{"line":59,"column":34}}}) : helper)))
     + "section-button-save\"><button class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":76,"column":70},"end":{"line":76,"column":84}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":59,"column":70},"end":{"line":59,"column":84}}}) : helper)))
     + "button "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":76,"column":91},"end":{"line":76,"column":105}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":59,"column":91},"end":{"line":59,"column":105}}}) : helper)))
     + "confirm "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":76,"column":113},"end":{"line":76,"column":127}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":59,"column":113},"end":{"line":59,"column":127}}}) : helper)))
     + "schedule-popup-save\"><span>"
-    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(13, data, 0),"inverse":container.program(15, data, 0),"data":data,"loc":{"start":{"line":76,"column":154},"end":{"line":76,"column":229}}})) != null ? stack1 : "")
+    + ((stack1 = lookupProperty(helpers,"if").call(alias1,(depth0 != null ? lookupProperty(depth0,"isEditMode") : depth0),{"name":"if","hash":{},"fn":container.program(9, data, 0),"inverse":container.program(11, data, 0),"data":data,"loc":{"start":{"line":59,"column":154},"end":{"line":59,"column":229}}})) != null ? stack1 : "")
     + "</span></button></div>\n    </div>\n    <div id=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":78,"column":13},"end":{"line":78,"column":27}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":61,"column":13},"end":{"line":61,"column":27}}}) : helper)))
     + "popup-arrow\" class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":78,"column":47},"end":{"line":78,"column":61}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":61,"column":47},"end":{"line":61,"column":61}}}) : helper)))
     + "popup-arrow "
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":78,"column":73},"end":{"line":78,"column":87}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":61,"column":73},"end":{"line":61,"column":87}}}) : helper)))
     + "arrow-bottom\">\n        <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":79,"column":20},"end":{"line":79,"column":34}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":62,"column":20},"end":{"line":62,"column":34}}}) : helper)))
     + "popup-arrow-border\">\n            <div class=\""
-    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":80,"column":24},"end":{"line":80,"column":38}}}) : helper)))
+    + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":63,"column":24},"end":{"line":63,"column":38}}}) : helper)))
     + "popup-arrow-fill\"></div>\n        </div>\n    </div>\n</div>\n";
 },"useData":true});
 

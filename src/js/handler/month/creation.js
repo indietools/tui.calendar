@@ -121,6 +121,60 @@ MonthCreation.prototype._createSchedule = function(eventData) {
 };
 
 /**
+ * Request team model creation to controller by custom team.
+ * @fires {MonthCreation#beforeCreateTeam}
+ * @param {object} teamData - team data from MonthCreation module.
+ */
+MonthCreation.prototype._createTeam = function(teamData) {
+    /**
+     * @event {MonthCreation#beforeCreateTeam}
+     * @type {object}
+     * @property {MonthCreationGuide} guide - MonthCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var teamViewModelData = teamData;
+    teamViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateTeam', teamViewModelData);
+};
+
+/**
+ * Request resource model creation to controller by custom resource.
+ * @fires {MonthCreation#beforeCreateResource}
+ * @param {object} resourceData - resource data from MonthCreation module.
+ */
+MonthCreation.prototype._createResource = function(resourceData) {
+    /**
+     * @event {MonthCreation#beforeCreateResource}
+     * @type {object}
+     * @property {MonthCreationGuide} guide - MonthCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var resourceViewModelData = resourceData;
+    resourceViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateResource', resourceViewModelData);
+};
+
+/**
+ * Request calendar model creation to controller by custom calendar.
+ * @fires {MonthCreation#beforeCreateCalendar}
+ * @param {object} calendarData - calendar data from MonthCreation module.
+ */
+MonthCreation.prototype._createCalendar = function(calendarData) {
+    /**
+     * @event {MonthCreation#beforeCreateCalendar}
+     * @type {object}
+     * @property {MonthCreationGuide} guide - MonthCreationGuide instance
+     * @property {string} triggerEventName - event name
+     */
+    var calendarViewModelData = calendarData;
+    calendarViewModelData.guide = this.guide;
+
+    this.fire('beforeCreateCalendar', calendarViewModelData);
+};
+
+/**
  * DragStart event handler
  * @fires {MonthCreation#monthCreationDragstart}
  * @param {object} dragStartEvent - dragStart event data
@@ -329,6 +383,48 @@ MonthCreation.prototype.invokeEventCreationClick = function(calendar) {
     };
 
     this.fire('calendarCreationClick', eventData);
+};
+
+/**
+ * Invoke creation click
+ * @param {Team} team - team instance
+ */
+MonthCreation.prototype.invokeTeamCreationClick = function(team) {
+    var teamData;
+
+    teamData = team;
+
+    // this.fire('click', teamData);
+
+    this._createTeam(teamData);
+};
+
+/**
+ * Invoke creation click
+ * @param {Resource} resource - resource instance
+ */
+MonthCreation.prototype.invokeResourceCreationClick = function(resource) {
+    var resourceData;
+
+    resourceData = resource;
+
+    // this.fire('click', resourceData);
+
+    this._createResource(resourceData);
+};
+
+/**
+ * Invoke creation click
+ * @param {Calendar} calendar - calendar instance
+ */
+MonthCreation.prototype.invokeCalendarCreationClick = function(calendar) {
+    var calendarData;
+
+    calendarData = calendar;
+
+    // this.fire('click', calendarData);
+
+    this._createCalendar(calendarData);
 };
 
 /**

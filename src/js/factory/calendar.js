@@ -2328,17 +2328,19 @@ Calendar.prototype.changeView = function(newViewName, force) {
     this._refreshMethod = created.refresh;
     this._scrollToNowMethod = created.scrollToNow;
     this._openCreationPopup = created.openCreationPopup;
+    this._showCreationPopup = created.showCreationPopup;
+    this._openProjectCreationPopup = created.openProjectCreationPopup;
+    this._showProjectCreationPopup = created.showProjectCreationPopup;
     this._showProjectDetailPopup = created.showProjectDetailPopup;
     this._openCalendarCreationPopup = created.openCalendarCreationPopup;
+    this._showCalendarCreationPopup = created.showCalendarCreationPopup;
     this._showCalendarDetailPopup = created.showCalendarDetailPopup;
     this._openTeamCreationPopup = created.openTeamCreationPopup;
+    this._showTeamCreationPopup = created.showTeamCreationPopup;
     this._showTeamDetailPopup = created.showTeamDetailPopup;
     this._openResourceCreationPopup = created.openResourceCreationPopup;
-    this._showResourceDetailPopup = created.showResourceDetailPopup;
-    this._showCreationPopup = created.showCreationPopup;
-    this._showCalendarCreationPopup = created.showCalendarCreationPopup;
-    this._showTeamCreationPopup = created.showTeamCreationPopup;
     this._showResourceCreationPopup = created.showResourceCreationPopup;
+    this._showResourceDetailPopup = created.showResourceDetailPopup;
     this._hideMoreView = created.hideMoreView;
 
     this.move();

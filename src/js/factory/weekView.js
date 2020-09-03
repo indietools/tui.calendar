@@ -550,19 +550,10 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (options.useCreationPopup) {
             createResourceView.off('beforeCreateResource', onSaveNewResource);
             createResourceView.destroy();
-        }
-
-        if (options.useCreationPopup) {
             createTeamView.off('beforeCreateTeam', onSaveNewTeam);
             createTeamView.destroy();
-        }
-
-        if (options.useCreationPopup) {
             createCalendarView.off('beforeCreateCalendar', onSaveNewCalendar);
             createCalendarView.destroy();
-        }
-
-        if (options.useCreationPopup) {
             createView.off('beforeCreateSchedule', onSaveNewSchedule);
             createView.destroy();
         }
@@ -570,14 +561,10 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         if (options.useDetailPopup) {
             detailResourceView.off('beforeDeleteResource', onDeleteResource);
             detailResourceView.destroy();
-        }
-
-        if (options.useDetailPopup) {
+            detailTeamView.off('beforeDeleteTeam', onDeleteTeam);
+            detailTeamView.destroy();
             detailCalendarView.off('beforeDeleteCalendar', onDeleteCalendar);
             detailCalendarView.destroy();
-        }
-
-        if (options.useDetailPopup) {
             detailView.off('beforeDeleteSchedule', onDeleteSchedule);
             detailView.destroy();
         }

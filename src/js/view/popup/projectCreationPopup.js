@@ -83,11 +83,14 @@ ProjectCreationPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 ProjectCreationPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    util.forEach(this._onClickListeners, function(listener) {
-        return !listener(target);
-    });
+        util.forEach(this._onClickListeners, function(listener) {
+            return !listener(target);
+        });
+    }
 };
 
 /**
@@ -364,15 +367,18 @@ ProjectCreationPopup.prototype._setArrowDirection = function(arrow) {
  */
 ProjectCreationPopup.prototype._createDatepicker = function(start, end) {
     var cssPrefix = config.cssPrefix;
+    var startSplit = start.split('-');
+    var endSplit = end.split('-');
 
+    // TODO: Project doesn't respect TZs yet.  So TZDate() => Date()
     this.rangePicker = DatePicker.createRangePicker({
         startpicker: {
-            date: new TZDate(start).toDate(),
+            date: new Date(startSplit[0], startSplit[1] - 1, startSplit[2]),
             input: '#' + cssPrefix + 'project-start-date',
             container: '#' + cssPrefix + 'startpicker-container'
         },
         endpicker: {
-            date: new TZDate(end).toDate(),
+            date: new Date(endSplit[0], endSplit[1] - 1, endSplit[2]),
             input: '#' + cssPrefix + 'project-end-date',
             container: '#' + cssPrefix + 'endpicker-container'
         },

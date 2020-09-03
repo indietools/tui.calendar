@@ -16,8 +16,14 @@ var config = require('../config'),
     MonthResize = require('../handler/month/resize'),
     MonthMove = require('../handler/month/move'),
     More = require('../view/month/more'),
-    CalendarCreationPopup = require('../view/popup/calendarCreationPopup'),
+    ProjectCreationPopup = require('../view/popup/projectCreationPopup'),
+    ProjectDetailPopup = require('../view/popup/projectDetailPopup'),
+    ResourceCreationPopup = require('../view/popup/resourceCreationPopup'),
+    ResourceDetailPopup = require('../view/popup/resourceDetailPopup'),
     TeamCreationPopup = require('../view/popup/teamCreationPopup'),
+    TeamDetailPopup = require('../view/popup/teamDetailPopup'),
+    CalendarCreationPopup = require('../view/popup/calendarCreationPopup'),
+    CalendarDetailPopup = require('../view/popup/calendarDetailPopup'),
     ScheduleCreationPopup = require('../view/popup/scheduleCreationPopup'),
     ScheduleDetailPopup = require('../view/popup/scheduleDetailPopup'),
     Schedule = require('../model/schedule');
@@ -57,7 +63,15 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
     var moveHandler, clearSchedulesHandler, onUpdateSchedule, onEditCalendar;
     var onShowCreationPopup, onSaveNewSchedule, onSaveNewTeam, onShowEditPopup;
     var detailView, onShowDetailPopup, onDeleteSchedule, onEditSchedule;
-    var onEditTeam;
+    var onEditTeam, onDisplayEditSchedule, createProjectView, createResourceView;
+    var onSaveNewCalendar, onSaveNewResource, detailProjectView, detailTeamView;
+    var detailCalendarView, detailResourceView, onShowProjectDetailPopup;
+    var onShowTeamDetailPopup, onShowCalendarDetailPopup, onShowResourceDetailPopup;
+    var onDeleteTeam, onDeleteCalendar, onDeleteResource, onEditProject;
+    var onUpdateScheduleCalendar, onDisplayEditTeam, onDisplayEditProject;
+    var onDisplayEditCalendar, onDisplayEditResource, onBeforeDisplayEditResource;
+    var onEditResource, onShowProjectEditPopup, onShowTeamEditPopup;
+    var onShowCalendarEditPopup, onShowResourceEditPopup;
 
     monthViewContainer = domutil.appendHTMLElement(
         'div', layoutContainer, config.classname('month'));
@@ -119,12 +133,20 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
     // binding popup for schedules creation
     if (options.useCreationPopup) {
+        createProjectView = new ProjectCreationPopup(
+            layoutContainer, options.usageStatistics);
         createView = new ScheduleCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
         createTeamView = new TeamCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
         createCalendarView = new CalendarCreationPopup(
-            layoutContainer, baseController.calendars, options.usageStatistics);
+            layoutContainer, baseController.calendars, baseController.resources,
+            baseController.teams, options.usageStatistics);
+        createResourceView = new ResourceCreationPopup(
+            layoutContainer, baseController.calendars, baseController.teams,
+            baseController.resources, options.usageStatistics);
 
         onSaveNewSchedule = function(scheduleData) {
             creationHandler.fire('beforeCreateSchedule', util.extend(scheduleData, {
@@ -132,19 +154,54 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
             }));
         };
 
+        onSaveNewTeam = function(teamData) {
+            util.extend(teamData, {
+                useCreationPopup: true
+            });
+            createView.fire('beforeCreateTeam', teamData);
+        };
+
+        onSaveNewCalendar = function(calendarData) {
+            util.extend(calendarData, {
+                useCreationPopup: true
+            });
+            createView.fire('beforeCreateCalendar', calendarData);
+        };
+
+        onSaveNewResource = function(resourceData) {
+            util.extend(resourceData, {
+                useCreationPopup: true
+            });
+            createView.fire('beforeCreateResource', resourceData);
+        };
+
         createView.on('beforeCreateSchedule', onSaveNewSchedule);
-        createView.on('beforeCreateCalendar', onSaveNewSchedule);
-        createView.on('beforeCreateTeam', onSaveNewTeam);
+        createTeamView.on('beforeCreateTeam', onSaveNewTeam);
+        createCalendarView.on('beforeCreateCalendar', onSaveNewCalendar);
+        createResourceView.on('beforeCreateResource', onSaveNewResource);
     }
 
     // binding popup for schedule detail
     if (options.useDetailPopup) {
+        detailProjectView = new ProjectDetailPopup(layoutContainer, baseController.calendars);
         detailView = new ScheduleDetailPopup(layoutContainer, baseController.calendars);
+        detailTeamView = new TeamDetailPopup(layoutContainer, baseController.resources);
+        detailCalendarView = new CalendarDetailPopup(layoutContainer, baseController.calendars);
+        detailResourceView = new ResourceDetailPopup(layoutContainer);
+
         onShowDetailPopup = function(eventData) {
             var scheduleId = eventData.schedule.calendarId;
+            var resourceIds = eventData.schedule.attendees || [];
             eventData.calendar = common.find(baseController.calendars, function(calendar) {
                 return calendar.id === scheduleId;
             });
+
+            eventData.attendees = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
+            });
+            eventData.attendees.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
 
             if (options.isReadOnly) {
                 eventData.schedule = util.extend({}, eventData.schedule, {isReadOnly: true});
@@ -152,31 +209,175 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
             detailView.render(eventData);
         };
+        onShowProjectDetailPopup = function(eventData) {
+            detailProjectView.render(eventData);
+        };
+        onShowTeamDetailPopup = function(eventData) {
+            var calendarId = eventData.calendarId;
+            var teamId = eventData.teamId;
+            var resourceIds;
+
+            eventData.team = common.find(baseController.teams, function(team) {
+                return team.id === teamId;
+            });
+
+            resourceIds = eventData.team.resources || [];
+
+            eventData.calendar = common.find(baseController.calendars, function(calendar) {
+                return calendar.id === calendarId;
+            });
+
+            eventData.resources = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
+            });
+            eventData.resources.concat(baseController.teams.filter(function(team) {
+                return resourceIds.includes(team.id);
+            }));
+
+            detailTeamView.render(eventData);
+        };
+        onShowCalendarDetailPopup = function(eventData) {
+            var calendarId = eventData.calendarId;
+            // var resourceIds = eventData.calendar.resources || [];
+            eventData.calendar = common.find(baseController.calendars, function(calendar) {
+                return calendar.id === calendarId;
+            });
+
+            detailCalendarView.render(eventData);
+        };
+        onShowResourceDetailPopup = function(eventData) {
+            var resourceId = eventData.resourceId;
+            var teamIds, resourceIds;
+            eventData.resource = common.find(baseController.resources, function(resource) {
+                return resource.id === resourceId;
+            });
+
+            resourceIds = eventData.resource.assignees || [];
+            teamIds = eventData.resource.teams || [];
+            eventData.teams = baseController.teams.filter(function(team) {
+                return teamIds.includes(team.id);
+            });
+
+            eventData.assignees = baseController.resources.filter(function(res) {
+                return resourceIds.includes(res.id);
+            });
+
+            detailResourceView.render(eventData);
+        };
         onDeleteSchedule = function(eventData) {
             if (creationHandler) {
                 creationHandler.fire('beforeDeleteSchedule', eventData);
             }
         };
+        onDeleteTeam = function(eventData) {
+            creationHandler.fire('beforeDeleteTeam', eventData);
+        };
+        onDeleteCalendar = function(eventData) {
+            creationHandler.fire('beforeDeleteCalendar', eventData);
+        };
+        onDeleteResource = function(eventData) {
+            creationHandler.fire('beforeDeleteResource', eventData);
+        };
         onEditSchedule = function(eventData) {
             moveHandler.fire('beforeUpdateSchedule', eventData);
+        };
+        onEditProject = function(eventData) {
+            creationHandler.fire('beforeUpdateProject', eventData);
+        };
+        onEditTeam = function(eventData) {
+            creationHandler.fire('beforeUpdateTeam', eventData);
+        };
+        onEditCalendar = function(eventData) {
+            creationHandler.fire('beforeUpdateCalendar', eventData);
+        };
+        onDisplayEditSchedule = function(eventData) {
+            creationHandler.fire('afterDisplayScheduleEditWindow', eventData);
+        };
+        onUpdateScheduleCalendar = function(eventData) {
+            creationHandler.fire('afterUpdateScheduleCalendar', eventData);
+        };
+        onDisplayEditTeam = function(eventData) {
+            creationHandler.fire('afterDisplayTeamEditWindow', eventData);
+        };
+        onDisplayEditProject = function(eventData) {
+            creationHandler.fire('afterDisplayProjectEditWindow', eventData);
+        };
+        onDisplayEditCalendar = function(eventData) {
+            creationHandler.fire('afterDisplayCalendarEditWindow', eventData);
+        };
+        onDisplayEditResource = function(eventData) {
+            creationHandler.fire('afterDisplayResourceEditWindow', eventData);
+        };
+        onBeforeDisplayEditResource = function(eventData) {
+            creationHandler.fire('beforeDisplayResourceEditWindow', eventData);
+        };
+        onEditResource = function(eventData) {
+            creationHandler.fire('beforeUpdateResource', eventData);
         };
 
         clickHandler.on('clickSchedule', onShowDetailPopup);
 
-        detailView.on('beforeDeleteSchedule', onDeleteSchedule);
-
         if (options.useCreationPopup) {
             onShowEditPopup = function(eventData) {
-                createView.setCalendars(baseController.calendars);
+                var calendars = baseController.calendars;
+                eventData.isEditMode = true;
+                createView.setCalendars(calendars);
                 createView.render(eventData);
             };
+            onShowProjectEditPopup = function(eventData) {
+                eventData.isEditMode = true;
+                createProjectView.render(eventData);
+            };
+            onShowTeamEditPopup = function(eventData) {
+                var resources = baseController.resources;
+                eventData.isEditMode = true;
+                createTeamView.setResources(resources);
+                createTeamView.render(eventData);
+            };
+            onShowCalendarEditPopup = function(eventData) {
+                var calendars = baseController.calendars;
+                eventData.isEditMode = true;
+                createCalendarView.setCalendars(calendars);
+                createCalendarView.render(eventData);
+            };
+            onShowResourceEditPopup = function(eventData) {
+                var teams = baseController.teams;
+                eventData.isEditMode = true;
+                createResourceView.setTeams(teams);
+                createResourceView.render(eventData);
+            };
+
             createView.on('beforeUpdateSchedule', onEditSchedule);
-            createView.on('beforeUpdateCalendar', onEditCalendar);
-            createView.on('beforeUpdateTeam', onEditTeam);
+            createView.on('afterDisplayScheduleEditWindow', onDisplayEditSchedule);
+            createView.on('afterUpdateScheduleCalendar', onUpdateScheduleCalendar);
             detailView.on('beforeUpdateSchedule', onShowEditPopup);
+
+            createProjectView.on('beforeUpdateProject', onEditProject);
+            createProjectView.on('afterDisplayProjectEditWindow', onDisplayEditProject);
+            detailProjectView.on('beforeUpdateProject', onShowProjectEditPopup);
+
+            createTeamView.on('beforeUpdateTeam', onEditTeam);
+            createTeamView.on('afterDisplayTeamEditWindow', onDisplayEditTeam);
+            detailTeamView.on('beforeUpdateTeam', onShowTeamEditPopup);
+
+            createCalendarView.on('beforeUpdateCalendar', onEditCalendar);
+            createCalendarView.on('afterDisplayCalendarEditWindow', onDisplayEditCalendar);
+            detailCalendarView.on('beforeUpdateCalendar', onShowCalendarEditPopup);
+
+            createResourceView.on('beforeUpdateResource', onEditResource);
+            createResourceView.on('afterDisplayResourceEditWindow', onDisplayEditResource);
+            detailResourceView.on('beforeDisplayResourceEditWindow', onBeforeDisplayEditResource);
+            detailResourceView.on('beforeUpdateResource', onShowResourceEditPopup);
         } else {
             detailView.on('beforeUpdateSchedule', onEditSchedule);
+            detailTeamView.on('beforeUpdateTeam', onEditTeam);
+            detailCalendarView.on('beforeUpdateCalendar', onEditCalendar);
+            detailResourceView.on('beforeUpdateResource', onEditResource);
         }
+        detailView.on('beforeDeleteSchedule', onDeleteSchedule);
+        detailTeamView.on('beforeDeleteTeam', onDeleteTeam);
+        detailCalendarView.on('beforeDeleteCalendar', onDeleteCalendar);
+        detailResourceView.on('beforeDeleteResource', onDeleteResource);
     }
 
     // binding clear schedules
@@ -231,16 +432,30 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         if (options.useCreationPopup) {
             if (creationHandler) {
                 creationHandler.off('beforeCreateSchedule', onShowCreationPopup);
+                createResourceView.off('beforeCreateResource', onSaveNewResource);
+                createTeamView.off('beforeCreateTeam', onSaveNewTeam);
+                createCalendarView.off('beforeCreateCalendar', onSaveNewCalendar);
             }
+
             createView.off('saveSchedule', onSaveNewSchedule);
             createView.destroy();
+            createResourceView.destroy();
+            createTeamView.destroy();
+            createCalendarView.destroy();
         }
 
         if (options.useDetailPopup) {
             clickHandler.off('clickSchedule', onShowDetailPopup);
             detailView.off('beforeUpdateSchedule', onUpdateSchedule);
             detailView.off('beforeDeleteSchedule', onDeleteSchedule);
+            detailResourceView.off('beforeDeleteResource', onDeleteResource);
+            detailTeamView.off('beforeDeleteTeam', onDeleteTeam);
+            detailCalendarView.off('beforeDeleteCalendar', onDeleteCalendar);
+
             detailView.destroy();
+            detailResourceView.destroy();
+            detailTeamView.destroy();
+            detailCalendarView.destroy();
         }
     };
 
@@ -252,14 +467,68 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         refresh: function() {
             monthView.vLayout.refresh();
         },
-        openTeamCreationPopup: function() {
-            if (createTeamView && creationHandler) {
-                creationHandler.invokeTeamCreationClick();
+        openResourceCreationPopup: function(resource) {
+            if (createResourceView) {
+                creationHandler.invokeResourceCreationClick(resource);
             }
         },
-        openCalendarCreationPopup: function() {
-            if (createCalendarView && creationHandler) {
-                creationHandler.invokeCalendarCreationClick();
+        showResourceCreationPopup: function(resource) {
+            if (createResourceView) {
+                createResourceView.render(resource);
+            }
+        },
+        showResourceDetailPopup: function(resource) {
+            if (onShowResourceDetailPopup) {
+                resource.guide = creationHandler.guide;
+                onShowResourceDetailPopup(resource);
+            }
+        },
+        openTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                creationHandler.invokeTeamCreationClick(team);
+            }
+        },
+        showTeamCreationPopup: function(team) {
+            if (createTeamView) {
+                createTeamView.render(team);
+            }
+        },
+        showTeamDetailPopup: function(team) {
+            if (onShowTeamDetailPopup) {
+                team.guide = creationHandler.guide;
+                onShowTeamDetailPopup(team);
+            }
+        },
+        openCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                creationHandler.invokeCalendarCreationClick(calendar);
+            }
+        },
+        showCalendarCreationPopup: function(calendar) {
+            if (createCalendarView) {
+                createCalendarView.render(calendar);
+            }
+        },
+        showCalendarDetailPopup: function(calendar) {
+            if (onShowCalendarDetailPopup) {
+                calendar.guide = creationHandler.guide;
+                onShowCalendarDetailPopup(calendar);
+            }
+        },
+        openProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                creationHandler.invokeProjectCreationClick(project);
+            }
+        },
+        showProjectCreationPopup: function(project) {
+            if (createProjectView) {
+                createProjectView.render(project);
+            }
+        },
+        showProjectDetailPopup: function(project) {
+            if (onShowProjectDetailPopup) {
+                project.guide = creationHandler.guide;
+                onShowProjectDetailPopup(project);
             }
         },
         openCreationPopup: function(schedule) {

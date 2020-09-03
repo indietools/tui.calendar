@@ -71,11 +71,14 @@ TeamDetailPopup.prototype.destroy = function() {
  * @param {MouseEvent} clickEvent - mouse event object
  */
 TeamDetailPopup.prototype._onClick = function(clickEvent) {
-    var target = (clickEvent.target || clickEvent.srcElement);
+    var target;
+    if (this.layer.container.style.display !== 'none') {
+        target = (clickEvent.target || clickEvent.srcElement);
 
-    this._onClickEditTeam(target);
+        this._onClickEditTeam(target);
 
-    this._onClickDeleteTeam(target);
+        this._onClickDeleteTeam(target);
+    }
 };
 
 /**
