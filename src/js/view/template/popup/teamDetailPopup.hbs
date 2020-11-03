@@ -1,9 +1,8 @@
 <div class="{{CSS_PREFIX}}popup {{CSS_PREFIX}}popup-detail">
   <div class="{{CSS_PREFIX}}popup-container">
     <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}section-header">
-      <div>
-        <span class="{{CSS_PREFIX}}schedule-title">{{team.name}}</span>
-      </div>
+      <span class="{{CSS_PREFIX}}schedule-title">{{team.name}}</span>
+      <a class="{{CSS_PREFIX}}resource-add-assignees" data-toggle="modal" href="" data-resource-name="{{team.name}}" data-resource-id="{{team.id}}">+ Add collaborator</a>
     </div>
     <div class="{{CSS_PREFIX}}section-detail">
         {{#each resources}}

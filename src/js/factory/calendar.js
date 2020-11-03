@@ -1891,6 +1891,28 @@ Calendar.prototype._onAfterDisplayResourceEditWindow = function(updateResourceDa
 };
 
 /**
+ * @fires Calendar#beforeDisplayTeamEditWindow
+ * @param {object} updateTeamData - update {@link Team} data
+ * @private
+ */
+Calendar.prototype._onBeforeDisplayTeamEditWindow = function(updateTeamData) {
+    /**
+     * Fire this event when we render our team creation popup.
+     * @event Calendar#beforeDisplayTeamEditWindow
+     * @type {object}
+     * @property {Team} team - The original {@link Team} instance
+     * @example
+     * calendar.on('beforeDisplayTeamEditWindow', function(event) {
+     *     var team = event.team;
+     *     var changes = event.changes;
+     *
+     *     calendar.updateTeam(team.id, changes);
+     * });
+     */
+    this.fire('beforeDisplayTeamEditWindow', updateTeamData);
+};
+
+/**
  * @fires Calendar#afterDisplayTeamEditWindow
  * @param {object} updateTeamData - update {@link Team} data
  * @private
@@ -2203,6 +2225,7 @@ Calendar.prototype._toggleViewSchedule = function(isAttach, view) {
         creationHandler[method]('beforeUpdateProject', self._onBeforeProjectUpdate, self);
         creationHandler[method]('beforeCreateTeam', self._onBeforeTeamCreate, self);
         creationHandler[method]('beforeUpdateTeam', self._onBeforeTeamUpdate, self);
+        creationHandler[method]('beforeDisplayTeamEditWindow', self._onBeforeDisplayTeamEditWindow, self);
         creationHandler[method]('afterDisplayTeamEditWindow', self._onAfterDisplayTeamEditWindow, self);
         creationHandler[method]('beforeDeleteTeam', self._onBeforeTeamDelete, self);
         creationHandler[method]('beforeCreateResource', self._onBeforeResourceCreate, self);

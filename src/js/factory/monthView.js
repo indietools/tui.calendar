@@ -71,7 +71,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
     var onUpdateScheduleCalendar, onDisplayEditTeam, onDisplayEditProject;
     var onDisplayEditCalendar, onDisplayEditResource, onBeforeDisplayEditResource;
     var onEditResource, onShowProjectEditPopup, onShowTeamEditPopup;
-    var onShowCalendarEditPopup, onShowResourceEditPopup;
+    var onShowCalendarEditPopup, onShowResourceEditPopup, onBeforeDisplayEditTeam;
 
     monthViewContainer = domutil.appendHTMLElement(
         'div', layoutContainer, config.classname('month'));
@@ -299,6 +299,9 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
         onDisplayEditTeam = function(eventData) {
             creationHandler.fire('afterDisplayTeamEditWindow', eventData);
         };
+        onBeforeDisplayEditTeam = function(eventData) {
+            creationHandler.fire('beforeDisplayTeamEditWindow', eventData);
+        };
         onDisplayEditProject = function(eventData) {
             creationHandler.fire('afterDisplayProjectEditWindow', eventData);
         };
@@ -358,6 +361,7 @@ function createMonthView(baseController, layoutContainer, dragHandler, options) 
 
             createTeamView.on('beforeUpdateTeam', onEditTeam);
             createTeamView.on('afterDisplayTeamEditWindow', onDisplayEditTeam);
+            createTeamView.on('beforeDisplayTeamEditWindow', onBeforeDisplayEditTeam);
             detailTeamView.on('beforeUpdateTeam', onShowTeamEditPopup);
 
             createCalendarView.on('beforeUpdateCalendar', onEditCalendar);

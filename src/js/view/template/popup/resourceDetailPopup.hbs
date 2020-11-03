@@ -2,21 +2,7 @@
   <div class="{{CSS_PREFIX}}popup-container">
     <div class="{{CSS_PREFIX}}popup-section {{CSS_PREFIX}}section-header">
         <span class="{{CSS_PREFIX}}resource-name">{{resource.name}}</span>
-        {{#if resource.assignees }}
-            {{#if (compare resource.assignees.length '<' 1)}}
-                <span class="{{CSS_PREFIX}}resource-assignees" data-resource-id="{{resource.id}}" onClick="this.nextElementSibling.style.display = "unset"; this.style.display = "none";">{{#with (index resource.assignees 0)}}{{name}}{{/with}}{{#if (compare resource.assignees.length '>' 1)}} (+{{subtract resource.assignees.length 1}} more){{/if}}</span>
-            {{/if}}
-        {{else}}
-            <a class="{{CSS_PREFIX}}resource-add-assignees" data-toggle="modal" href="" data-resource-name="{{resource.name}}" data-resource-id="{{resource.id}}">+ Assign to someone</a>
-        {{/if}}
-        <!--<div class="{{CSS_PREFIX}}resource-assignees-invite">
-            <input type="text" id="{{CSS_PREFIX}}resource-creation-assignees-input" class="{{CSS_PREFIX}}resources-input" data-role="tagsinput" >
-            <div class="{{CSS_PREFIX}}section-button">
-                <button class="{{CSS_PREFIX}}popup-invite-resource-assignees"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-plus"></span><span class="{{CSS_PREFIX}}content">{{{popupInvite-tmpl}}}</span></button>
-                <div class="{{CSS_PREFIX}}popup-vertical-line"></div>
-                <button class="{{CSS_PREFIX}}popup-cancel-resource-assignees"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-trash"></span><span class="{{CSS_PREFIX}}content">{{{popupCancel-tmpl}}}</span></button>
-            </div> 
-        </div>-->
+            <a class="{{CSS_PREFIX}}resource-add-assignees" data-toggle="modal" href="" data-resource-name="{{resource.name}}" data-resource-id="{{resource.id}}">+ Add collaborator</a>
     </div>
     <div class="{{CSS_PREFIX}}section-detail col-sm-6">
         {{#each teams}}

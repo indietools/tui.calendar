@@ -150,6 +150,10 @@ TeamDetailPopup.prototype.render = function(viewModel) {
     util.debounce(function() {
         domevent.on(document.body, 'mousedown', self._onMouseDown, self);
     })();
+
+    this.fire('beforeDisplayTeamEditWindow', {
+        team: this._team
+    });
 };
 
 /**

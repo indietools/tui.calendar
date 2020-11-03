@@ -109,6 +109,7 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
     var onShowEditPopup, onShowCalendarEditPopup, onShowResourceEditPopup;
     var onEditSchedule, onEditCalendar, onEditTeam, onDisplayEditSchedule;
     var onDisplayEditCalendar, onUpdateScheduleCalendar, onEditResource;
+    var onBeforeDisplayEditTeam;
     var taskView = options.taskView;
     var scheduleView = options.scheduleView;
     var viewVisibilities = {
@@ -450,6 +451,9 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
         onDisplayEditTeam = function(eventData) {
             weekView.handler.creation.allday.fire('afterDisplayTeamEditWindow', eventData);
         };
+        onBeforeDisplayEditTeam = function(eventData) {
+            weekView.handler.creation.allday.fire('beforeDisplayTeamEditWindow', eventData);
+        };
         onDisplayEditProject = function(eventData) {
             weekView.handler.creation.allday.fire('afterDisplayProjectEditWindow', eventData);
         };
@@ -497,6 +501,7 @@ module.exports = function(baseController, layoutContainer, dragHandler, options,
             };
             createTeamView.on('beforeUpdateTeam', onEditTeam);
             createTeamView.on('afterDisplayTeamEditWindow', onDisplayEditTeam);
+            detailTeamView.on('beforeDisplayTeamEditWindow', onBeforeDisplayEditTeam);
             detailTeamView.on('beforeUpdateTeam', onShowTeamEditPopup);
 
             onShowCalendarEditPopup = function(eventData) {
