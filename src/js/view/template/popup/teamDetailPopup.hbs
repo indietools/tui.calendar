@@ -6,7 +6,22 @@
     </div>
     <div class="{{CSS_PREFIX}}section-detail">
         {{#each resources}}
-              <div class="{{CSS_PREFIX}}popup-detail-item {{CSS_PREFIX}}popup-detail-item-indent"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-user-b"></span><span class="{{CSS_PREFIX}}content">{{name}}</span></div>
+              {{#if isPerson}}
+                  <div class="{{CSS_PREFIX}}popup-detail-item {{CSS_PREFIX}}popup-detail-item-indent"><span class="{{CSS_PREFIX}}icon {{CSS_PREFIX}}ic-user-b"></span><span class="{{CSS_PREFIX}}content">{{name}}</span></div>
+              {{else}}
+                  <div class="{{CSS_PREFIX}}popup-detail-item {{CSS_PREFIX}}popup-detail-item-indent"><span class="{{CSS_PREFIX}}icon"><?xml version="1.0" ?>
+                      <svg height="12px" id="SVGRoot" version="1.1" viewBox="0 0 64 64" width="12px" style="margin-left: 20px; margin-top: -16px;" xmlns:svg="http://www.w3.org/2000/svg">
+                          <defs id="defs3848"/>
+                          <g id="layer1">
+                              <g id="g5717" transform="translate(8.4887,-21.393403)">
+                                  <polygon class="fil0 str0" id="polygon193" points="6229,5090 6229,5442 5869,5442 5869,5090 " style="clip-rule:evenodd;fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;image-rendering:optimizeQuality;shape-rendering:geometricPrecision;text-rendering:geometricPrecision" transform="matrix(0.096,0,0,0.096,-568.3767,-452.14261)"/>
+                                  <polyline class="fil0 str0" id="polyline195" points="6251,5181 6462,5083 6462,5449 6239,5362 " style="clip-rule:evenodd;fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;image-rendering:optimizeQuality;shape-rendering:geometricPrecision;text-rendering:geometricPrecision" transform="matrix(0.096,0,0,0.096,-568.3767,-452.14261)"/>
+                                  <line class="fil0 str1" id="line197" style="clip-rule:evenodd;fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:4;image-rendering:optimizeQuality;shape-rendering:geometricPrecision;text-rendering:geometricPrecision" x1="6.3753009" x2="6.3753009" y1="46.48138" y2="60.401382"/>
+                              </g>
+                          </g>
+                      </svg></span><span class="{{CSS_PREFIX}}content">{{name}}</span></div>
+              {{/if}}
+
         {{/each}}
     </div>
     <div class="{{CSS_PREFIX}}section-button">

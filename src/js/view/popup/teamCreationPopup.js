@@ -215,7 +215,7 @@ TeamCreationPopup.prototype._selectDropdownMenuItem = function(target) {
 TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
     var className = config.classname('team-popup-save');
     var cssPrefix = config.cssPrefix;
-    var name, bgColor, resources, resourcesArray, changes;
+    var i, name, bgColor, resources, resourcesArray, userResourcesArray, changes;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
@@ -244,6 +244,14 @@ TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
         bgColor.style.backgroundColor);
 
     resourcesArray = resources.value.split(',') || [];
+    userResourcesArray = [];
+    i = resourcesArray.length - 1;
+
+    for (; i >= 0; i -= 1) {
+        if (resourcesArray[i].substring(0, 3) === 'usr') {
+            userResourcesArray.concat(resourcesArray.splice(i, 1));
+        }
+    }
 
     if (this._isEditMode) {
         changes = common.getTeamChanges(
@@ -261,6 +269,7 @@ TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
 
         this.fire('beforeUpdateTeam', {
             team: this._team,
+            users: userResourcesArray,
             changes: changes
         });
     } else {
@@ -275,7 +284,8 @@ TeamCreationPopup.prototype._onClickSaveTeam = function(target) {
             color: colorutil.determineTextforBackground(bgColor.value),
             dragBgColor: bgColor.value,
             borderColor: bgColor.value,
-            resources: resourcesArray
+            resources: resourcesArray,
+            users: userResourcesArray
         });
     }
 

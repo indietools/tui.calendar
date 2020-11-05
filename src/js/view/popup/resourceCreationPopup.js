@@ -330,6 +330,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
     var className = config.classname('resource-popup-save');
     var cssPrefix = config.cssPrefix;
     var name, bgColor, isPerson, assignees, teams, changes;
+    var users, userArray;
 
     if (!domutil.hasClass(target, className) && !domutil.closest(target, '.' + className)) {
         return false;
@@ -363,6 +364,9 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
         return item.dataset.teamId;
     });
 
+    users = domutil.get(cssPrefix + 'resource-creation-resources-input');
+    userArray = users.value.split(',') || [];
+
     if (this._isEditMode) {
         changes = common.getResourceChanges(
             this._resource,
@@ -381,6 +385,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
 
         this.fire('beforeUpdateResource', {
             resource: this._resource,
+            users: userArray,
             changes: changes
         });
     } else {
@@ -397,6 +402,7 @@ ResourceCreationPopup.prototype._onClickSaveResource = function(target) {
             borderColor: bgColor.value,
             isPerson: isPerson,
             assignees: assignees,
+            users: userArray,
             teams: teams
         });
     }
