@@ -1,6 +1,6 @@
 /*!
  * TOAST UI Calendar
- * @version 1.12.11 | Thu Nov 05 2020
+ * @version 1.12.11 | Sat Jan 29 2022
  * @author NHN FE Development Lab <dl_javascript@nhn.com>
  * @license MIT
  */
@@ -28642,7 +28642,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":56,"column":20},"end":{"line":56,"column":34}}}) : helper)))
     + "popup-section\">\n            <a style=\"float: left;\" class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":57,"column":43},"end":{"line":57,"column":57}}}) : helper)))
-    + "resource-add-assignees\" data-toggle=\"modal\" href=\"\" data-resource-name=\""
+    + "resource-add-assignees\" data-bs-toggle=\"modal\" href=\"\" data-resource-name=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
     + "\" data-resource-id=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"id") : stack1), depth0))
@@ -28732,7 +28732,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
     + "</span>\n            <a class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":22},"end":{"line":5,"column":36}}}) : helper)))
-    + "resource-add-assignees\" data-toggle=\"modal\" href=\"\" data-resource-name=\""
+    + "resource-add-assignees\" data-bs-toggle=\"modal\" href=\"\" data-resource-name=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
     + "\" data-resource-id=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"resource") : depth0)) != null ? lookupProperty(stack1,"id") : stack1), depth0))
@@ -29391,7 +29391,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":36,"column":20},"end":{"line":36,"column":34}}}) : helper)))
     + "popup-section\">\n            <a style=\"float: left;\" class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":37,"column":43},"end":{"line":37,"column":57}}}) : helper)))
-    + "resource-add-assignees\" data-toggle=\"modal\" href=\"\" data-resource-name=\""
+    + "resource-add-assignees\" data-bs-toggle=\"modal\" href=\"\" data-resource-name=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"team") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
     + "\" data-resource-id=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"team") : depth0)) != null ? lookupProperty(stack1,"id") : stack1), depth0))
@@ -29510,7 +29510,7 @@ module.exports = (Handlebars['default'] || Handlebars).template({"1":function(co
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"team") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
     + "</span>\n      <a class=\""
     + alias4(((helper = (helper = lookupProperty(helpers,"CSS_PREFIX") || (depth0 != null ? lookupProperty(depth0,"CSS_PREFIX") : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"CSS_PREFIX","hash":{},"data":data,"loc":{"start":{"line":5,"column":16},"end":{"line":5,"column":30}}}) : helper)))
-    + "resource-add-assignees\" data-toggle=\"modal\" href=\"\" data-resource-name=\""
+    + "resource-add-assignees\" data-bs-toggle=\"modal\" href=\"\" data-resource-name=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"team") : depth0)) != null ? lookupProperty(stack1,"name") : stack1), depth0))
     + "\" data-resource-id=\""
     + alias4(alias5(((stack1 = (depth0 != null ? lookupProperty(depth0,"team") : depth0)) != null ? lookupProperty(stack1,"id") : stack1), depth0))
